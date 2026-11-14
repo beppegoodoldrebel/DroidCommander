@@ -1,0 +1,31 @@
+Droid Commander — third-party components
+=========================================
+
+Droid Commander includes the following software. Each one keeps its own license; the license
+texts are in this folder.
+
+Component                       License                      Source
+------------------------------  ---------------------------  ------------------------------------------
+Python 3.12 runtime             PSF License                  https://www.python.org
+Vosk speech recognition         Apache License 2.0           https://alphacephei.com/vosk
+vosk-model-small-en-us-0.15     Apache License 2.0           https://alphacephei.com/vosk/models
+PortAudio (via sounddevice)     MIT                          http://www.portaudio.com
+libsndfile (via soundfile)      LGPL 2.1                     https://libsndfile.github.io/libsndfile
+Tcl/Tk (tkinter)                Tcl/Tk license (BSD-style)   https://www.tcl.tk
+numpy 2.5.4                     BSD-3-Clause AND 0BSD AND M  PyPI: numpy
+sounddevice 0.5.6               MIT                          PyPI: sounddevice
+soundfile 0.14.0                BSD 3-Clause License         PyPI: soundfile
+cffi 2.1.1                      MIT-0                        PyPI: cffi
+pycparser 3.12                  BSD-3-Clause                 PyPI: pycparser
+requests 2.34.2                 Apache-2.0                   PyPI: requests
+urllib3 2.8.0                   MIT                          PyPI: urllib3
+idna 3.20                       BSD-3-Clause                 PyPI: idna
+certifi 2026.10.23              MPL-2.0                      PyPI: certifi
+charset-normalizer 3.5.2        MIT                          PyPI: charset-normalizer
+tqdm 4.70.1                     MPL-2.0 AND MIT              PyPI: tqdm
+srt 3.5.3                       MIT                          PyPI: srt
+websockets 17.4                 BSD-3-Clause                 PyPI: websockets
+colorama 0.4.6                  see license file             PyPI: colorama
+typing_extensions 4.16.0        PSF-2.0                      PyPI: typing_extensions
+Fate of the Galaxy and FreeSpace Open are separate projects by their own authors and are not
+included. Droid Commander is an unofficial fan tool, not affiliated with Lucasfilm.

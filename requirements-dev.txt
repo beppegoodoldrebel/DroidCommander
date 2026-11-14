@@ -1,0 +1,3 @@
+-r requirements.txt
+pyinstaller>=6.0     # builds the .exe (packaging/build.ps1)
+lupa>=2.0            # Lua 5.1 runtime, only to test game_link/*.lua outside the game

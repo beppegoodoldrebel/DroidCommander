@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Droid Commander — User Manual</title>
+<style>
+  @page { size: A4; margin: 18mm 17mm 20mm 17mm; }
+  @page cover { margin: 0; }
+  :root { --amber: #e39a1f; --amber-soft: #fff4e0; --ink: #1d232b; --dim: #5d6b78; --line: #d9dee3;
+          --cyan: #1c7fa8; --panel: #0a0e13; }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-family: "Segoe UI", system-ui, sans-serif; color: var(--ink); font-size: 10.5pt;
+         line-height: 1.5; margin: 0; }
+  h1, h2, h3 { font-family: "Segoe UI Semibold", "Segoe UI", sans-serif; line-height: 1.2; }
+  h1 { font-size: 22pt; margin: 0 0 4mm; letter-spacing: .5px; }
+  h2 { font-size: 15pt; color: var(--ink); margin: 7mm 0 2.5mm; padding-bottom: 1.5mm;
+       border-bottom: 2px solid var(--amber); }
+  h3 { font-size: 11.5pt; color: var(--cyan); margin: 5mm 0 1.5mm; }
+  p { margin: 0 0 2.5mm; }
+  ul, ol { margin: 0 0 3mm; padding-left: 6mm; }
+  li { margin-bottom: 1mm; }
+  .chapter { break-before: page; }
+  .eyebrow { text-transform: uppercase; letter-spacing: 2px; font-size: 8.5pt; color: var(--amber);
+             font-weight: 600; margin-bottom: 1mm; }
+  figure { margin: 3mm 0 4mm; break-inside: avoid; }
+  figure img { width: 100%; border: 1px solid #222; border-radius: 3px; display: block; }
+  figcaption { font-size: 8.5pt; color: var(--dim); margin-top: 1.5mm; }
+  table { width: 100%; border-collapse: collapse; margin: 2mm 0 4mm; font-size: 9.5pt; break-inside: auto; }
+  th { text-align: left; background: var(--panel); color: #ffb43a; font-weight: 600; padding: 1.6mm 2mm;
+       font-size: 8.5pt; text-transform: uppercase; letter-spacing: .5px; }
+  td { padding: 1.4mm 2mm; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr { break-inside: avoid; }
+  .say { font-weight: 600; white-space: nowrap; }
+  code, .key { font-family: Consolas, monospace; font-size: 9pt; background: #f1f3f5; padding: .2mm 1.2mm;
+               border-radius: 2px; }
+  .key { border: 1px solid #c9ced3; background: #fafbfc; }
+  .note, .tip, .warn { border-left: 4px solid var(--amber); background: var(--amber-soft); padding: 2.5mm 3.5mm;
+                       margin: 3mm 0 4mm; break-inside: avoid; border-radius: 0 3px 3px 0; }
+  .tip { border-color: var(--cyan); background: #e8f4f9; }
+  .warn { border-color: #d0582a; background: #fdece5; }
+  .note b:first-child, .tip b:first-child, .warn b:first-child { display: block; margin-bottom: .5mm; }
+  .steps { counter-reset: s; list-style: none; padding: 0; }
+  .steps > li { counter-increment: s; position: relative; padding-left: 10mm; margin-bottom: 3mm; break-inside: avoid; }
+  .steps > li::before { content: counter(s); position: absolute; left: 0; top: 0; width: 6.5mm; height: 6.5mm;
+                        border-radius: 50%; background: var(--amber); color: #fff; font-weight: 700;
+                        text-align: center; line-height: 6.5mm; font-size: 9.5pt; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; }
+
+  /* cover */
+  .cover { page: cover; height: 296mm; display: flex; flex-direction: column; justify-content: space-between;
+           background: var(--panel); color: #d6e0e8; margin: 0; padding: 38mm 24mm 24mm; overflow: hidden; }
+  .keep { break-inside: avoid; }
+  .cover .logo { width: 34mm; height: 34mm; image-rendering: pixelated; }
+  .cover h1 { font-size: 36pt; color: #ffb43a; letter-spacing: 6px; margin: 10mm 0 2mm; }
+  .cover .sub { font-size: 13pt; color: #8fb3c8; letter-spacing: 3px; text-transform: uppercase; }
+  .cover .tag { font-size: 14pt; margin-top: 14mm; max-width: 140mm; color: #d6e0e8; }
+  .cover .meta { font-size: 9.5pt; color: #7d909f; border-top: 1px solid #263544; padding-top: 4mm; }
+  .cover .bar { height: 3px; width: 60mm; background: #ffb43a; margin-top: 6mm; }
+
+  .toc { list-style: none; padding: 0; columns: 2; column-gap: 10mm; margin-bottom: 4mm; }
+  .toc li { display: flex; border-bottom: 1px dotted var(--line); padding: 1.2mm 0; font-size: 10.5pt;
+            break-inside: avoid; }
+  .toc li span:first-child { color: var(--amber); font-weight: 700; width: 9mm; }
+</style>
+</head>
+<body>
+
+<!-- ============================================================ COVER -->
+<section class="cover">
+  <div>
+    <img class="logo" src="img/icon.png" alt="">
+    <h1>DROID COMMANDER</h1>
+    <div class="sub">Astromech control interface</div>
+    <div class="bar"></div>
+    <p class="tag">Talk to your astromech droid in <b>Fate of the Galaxy</b>.
+      It presses the keys, answers with droid beeps, reacts to the battle
+      and relays your orders to your wingmen.</p>
+  </div>
+  <div class="meta">User manual · version 1.0.0<br>
+    For Fate of the Galaxy (FotG 1 and FotG 2) on FreeSpace Open, Windows 10/11.<br>
+    A fan project, not affiliated with Lucasfilm, Disney or the Fate of the Galaxy team.</div>
+</section>
+
+<!-- ============================================================ CONTENTS -->
+<section class="chapter">
+  <div class="eyebrow">Contents</div>
+  <h1>What's inside</h1>
+  <ol class="toc">
+    <li><span>1</span>Introduction and requirements</li>
+    <li><span>2</span>Installation</li>
+    <li><span>3</span>Quick start</li>
+    <li><span>4</span>Talking to the droid</li>
+    <li><span>5</span>Orders to your wingmen</li>
+    <li><span>6</span>Asking the droid questions</li>
+    <li><span>7</span>The Droid tab</li>
+    <li><span>8</span>The Commands tab</li>
+    <li><span>9</span>The Voice tab</li>
+    <li><span>10</span>The Events tab (game link)</li>
+    <li><span>11</span>The Setup tab</li>
+    <li><span>12</span>LAUNCH! — the active view</li>
+    <li><span>13</span>Multiplayer and fair play</li>
+    <li><span>14</span>Troubleshooting</li>
+    <li><span>15</span>Command reference</li>
+    <li><span>16</span>Uninstalling</li>
+  </ol>
+
+  <h2>1 · Introduction and requirements</h2>
+  <p>Droid Commander listens to your voice while you fly. Start a sentence with your droid's name —
+    <b>"R2, open S-foils"</b> — and it presses the matching key in the game, then answers with a
+    droid beep. Speech recognition runs entirely on your PC: nothing is sent to the internet.</p>
+  <p>What it can do:</p>
+  <ul>
+    <li><b>Voice commands</b> for targeting, throttle, power distribution, shields, S-foils, hyperdrive…</li>
+    <li><b>Orders to wingmen</b>: to all of them, or to one wing ("Squad Alpha, cover me").</li>
+    <li><b>Reactions</b> to the battle: a happy whistle for a kill, a scream when the hull is hit, an alarm when the hull is low.</li>
+    <li><b>Answers</b> to questions such as "are we clear?" or "how are the shields?".</li>
+    <li><b>Your own droid voice</b>: R2-D2, R5, Chopper or BB-8 style, or your own sound files.</li>
+  </ul>
+  <h3>You need</h3>
+  <ul>
+    <li>Windows 10 or 11.</li>
+    <li><b>Fate of the Galaxy</b> installed with Knossos.NET (FotG 1 or FotG 2).</li>
+    <li>A microphone — a headset microphone works best, because it doesn't pick up the game sound.</li>
+    <li>Commands are spoken in <b>English</b>.</li>
+  </ul>
+</section>
+
+<!-- ============================================================ INSTALL + QUICK START -->
+<section class="chapter">
+  <h2>2 · Installation</h2>
+  <ol class="steps">
+    <li>Run <b>DroidCommander-Setup-1.0.0.exe</b>. No administrator rights are needed; the setup can
+      be shown in English or Italian.</li>
+    <li>Choose the folder (the default is fine) and, if you like, a desktop icon.</li>
+    <li>At the end, tick <b>Launch Droid Commander</b> or start it later from the Start menu.</li>
+  </ol>
+  <p>Everything is included: the speech model, the droid voices and the game link script. Your
+    settings are stored in <code>%APPDATA%\DroidCommander</code>, so they survive updates and
+    reinstalls.</p>
+
+  <h2>3 · Quick start</h2>
+  <p>The first time, Droid Commander doesn't know where the game is. Five steps and you're flying:</p>
+  <ol class="steps">
+    <li><b>Commands tab → Game controls → Browse…</b> and choose FreeSpace Open's
+      <code>data\players</code> folder, for example
+      <code>…\kn_portable\HardLightProductions\FreeSpaceOpen\data\players</code>.
+      Choose <b>Follow pilot</b> and select your pilot: the droid then always uses that pilot's keys,
+      even when you change them in the game.</li>
+    <li><b>Setup tab</b>: pick your <b>microphone</b> and press <b>Test microphone</b>. The bar must move
+      when you speak. Keep the audio output on <i>Windows default</i>. Press <b>Save</b>.</li>
+    <li><b>Events tab → Install game link</b>. If the game is running, restart it. This lets the droid
+      react to the battle, answer questions and find your wings.</li>
+    <li>Press <b>LAUNCH!</b> (top right). The window switches to the active view and the droid says it's ready.</li>
+    <li>Start a mission, click into the game window and say <b>"R2, full throttle"</b>.</li>
+  </ol>
+  <div class="tip"><b>Tip</b>Speak naturally, at normal speed, and pause a moment after the droid's name
+    the first few times. If a command isn't understood, the droid answers with a puzzled beep.</div>
+  <div class="warn"><b>Keys bound only to a joystick</b>Droid Commander presses keyboard keys. If a game
+    action is bound only to a joystick button, add a keyboard key for it in the game's control options
+    (the Commands tab marks such commands with ⚠).</div>
+</section>
+
+<!-- ============================================================ TALKING -->
+<section class="chapter">
+  <h2>4 · Talking to the droid</h2>
+  <p>Every command starts with <b>who</b> you're talking to, followed by the order:</p>
+  <table>
+    <tr><th style="width:42%">You say</th><th>Who receives it</th></tr>
+    <tr><td class="say">"R2, target nearest enemy"</td><td>your droid (its name is set in the Droid tab)</td></tr>
+    <tr><td class="say">"Wingmen, cover me"</td><td>all your wingmen</td></tr>
+    <tr><td class="say">"Squad Alpha, attack my target"</td><td>only Alpha wing</td></tr>
+  </table>
+  <p>The name is what tells the droid you're talking to it and not to your friends on voice chat.
+    Sentences that don't start with a known name are ignored.</p>
+
+  <h3>Two ways of listening</h3>
+  <p>Choose one in the <b>Setup tab</b>:</p>
+  <ul>
+    <li><b>Always listening</b> (default): the droid listens all the time and acts when a sentence starts
+      with its name.</li>
+    <li><b>Push-to-talk</b>: the droid listens only while you hold a key or button — keyboard, mouse
+      side/middle button, or any joystick, throttle or gamepad button or hat. The name becomes
+      optional ("full throttle" is enough), unless you tick <i>Require the droid's name too</i>.</li>
+  </ul>
+  <div class="note"><b>Choose a free button</b>For push-to-talk, use a key or button that does nothing in
+    the game — otherwise every time you talk you also fire, target or change something.</div>
+
+  <h3>How the droid answers</h3>
+  <ul>
+    <li><b>Acknowledged</b> — a short positive chirp: the order was carried out.</li>
+    <li><b>Not understood</b> — a puzzled beep: it heard you but didn't recognise the command.</li>
+    <li><b>Error</b> — a negative buzz: it understood, but couldn't do it (for example, the game isn't
+      the active window, or the key isn't found in your controls).</li>
+  </ul>
+
+  <h2>5 · Orders to your wingmen</h2>
+  <p>In the game, wingman orders go through the comm menu <i>Give Command To</i>
+    (1&nbsp;Ships · 2&nbsp;Wings · 3&nbsp;All Ships · 4&nbsp;Reinforcements). Droid Commander navigates it for you:</p>
+  <table>
+    <tr><th style="width:42%">You say</th><th>The droid presses</th></tr>
+    <tr><td class="say">"Wingmen, cover me"</td><td>the <i>cover me</i> shortcut, then <span class="key">3</span> (All Ships)</td></tr>
+    <tr><td class="say">"Squad Alpha, cover me"</td><td>the shortcut, then <span class="key">2</span> (Wings), then Alpha's number in the list</td></tr>
+    <tr><td class="say">"Alpha wing, cover me"</td><td>the same as "Squad Alpha"</td></tr>
+  </table>
+  <p>Available orders: <i>attack my target, disable my target, disarm my target, destroy subsystem,
+    protect my target, ignore my target, form up, cover me, engage enemy, depart</i>.</p>
+  <p>The wing list is read from the game through the game link, in the same order the game uses
+    (the mission's starting wings first, then the others; only wings that still have a ship flying).
+    "Squad Gold" also finds a wing called "Gold Aurek" when it's the only Gold wing.</p>
+  <div class="note"><b>When the droid refuses</b>If the wing isn't in the mission, has no ships left, or
+    the game link isn't installed, the droid gives the error beep and presses nothing — so a wrong
+    order is never sent.</div>
+  <p>The names you can say are listed in the Droid tab under <b>Wing names</b> (Greek letters and colours
+    by default). Add the names used by your favourite missions.</p>
+
+  <h2>6 · Asking the droid questions</h2>
+  <p>With the game link installed, the droid can check your ship and answer with a happy (yes / all good)
+    or worried (no / bad news) beep:</p>
+  <table>
+    <tr><th style="width:42%">Ask</th><th>The droid checks</th></tr>
+    <tr><td class="say">"R2, are you OK?"</td><td>hull and shields — a panicky answer if the hull is critical</td></tr>
+    <tr><td class="say">"R2, are we hit?" / "damage report"</td><td>whether you've been hit recently and the hull state</td></tr>
+    <tr><td class="say">"R2, how are the shields?"</td><td>shield strength</td></tr>
+    <tr><td class="say">"R2, did we get him?"</td><td>whether you destroyed something in the last seconds</td></tr>
+    <tr><td class="say">"R2, are we clear?"</td><td>whether any enemies are left</td></tr>
+    <tr><td class="say">"R2, is the target damaged?"</td><td>your target's hull</td></tr>
+    <tr><td class="say">"R2, do we have energy?"</td><td>weapon energy</td></tr>
+  </table>
+</section>
+
+<!-- ============================================================ DROID TAB -->
+<section class="chapter">
+  <div class="eyebrow">The editor</div>
+  <h2>7 · The Droid tab</h2>
+  <figure><img src="img/tab_droid.png" alt="Droid tab"><figcaption>The Droid tab: name, recognized forms, callsigns and wing names.</figcaption></figure>
+  <ul>
+    <li><b>Droid name</b> — what you call your droid: "R2", "Chopper", "BB-8"… Commands only run when they
+      start with it.</li>
+    <li><b>Recognized as</b> — the speech model often hears letters as words ("R" as "are"), so the name is
+      accepted in several forms. They are rebuilt automatically when you rename the droid; you can also
+      edit them. Words the speech model doesn't know are flagged in orange.</li>
+    <li><b>Other callsigns</b> — other addressees, one per line: <code>Wingmen: wing men, wingman, squadron, flight</code>.</li>
+    <li><b>Wing names</b> — names you can use with "Squad …" (comma separated).</li>
+  </ul>
+  <p>Press <b>Save</b>: a running Droid Commander uses the new name right away.</p>
+</section>
+
+<!-- ============================================================ COMMANDS TAB -->
+<section class="chapter">
+  <h2>8 · The Commands tab</h2>
+  <figure><img src="img/tab_commands.png" alt="Commands tab"><figcaption>The Commands tab on a first start: the ⚠ marks disappear once the game controls are found.</figcaption></figure>
+  <h3>Game controls</h3>
+  <p>Tells Droid Commander which keys your game uses. <b>Browse…</b> to the game's <code>data\players</code>
+    folder, then choose <b>Follow pilot</b> (recommended: it follows the controls of your pilot) or a
+    <b>Fixed preset</b>.</p>
+  <h3>Commands list</h3>
+  <p>Each line shows the command, who it's addressed to (<i>To</i>) and the key it presses. A ⚠ means the
+    key can't be found. <b>New</b>, <b>Duplicate</b> and <b>Delete</b> manage the list;
+    <b>Import from game…</b> creates commands for any control of the game in a few clicks.</p>
+  <h3>Editing a command</h3>
+  <ul>
+    <li><b>Name</b> and <b>To</b> (the droid or a callsign such as Wingmen), and <b>Enabled</b>.</li>
+    <li><b>Phrases</b> — one per line, <i>without</i> the name you call. Add as many ways of saying it as you like.</li>
+    <li><b>Actions</b> — performed in order: a game action (uses your key for it), a fixed key, a mouse
+      button or a pause. <b>Repeat</b> presses it several times ("full power to engines" presses
+      <i>increase engine power</i> 6 times).</li>
+    <li><b>Response</b> — the droid's answer after the command; <b>Play</b> lets you hear it.</li>
+    <li><b>Test in game</b> runs the command after 5 seconds, so you can switch to the game.</li>
+  </ul>
+  <p><b>Try a phrase</b> (bottom) shows which command a sentence would trigger and who receives it.
+    Press <b>Save</b> when done — a running Droid Commander reloads the commands by itself.</p>
+</section>
+
+<!-- ============================================================ VOICE TAB -->
+<section class="chapter">
+  <h2>9 · The Voice tab</h2>
+  <figure><img src="img/tab_voice.png" alt="Voice tab"><figcaption>The Voice tab with the R2-D2 style preset.</figcaption></figure>
+  <ul>
+    <li><b>Voice</b> — built-in presets: <i>R2-D2 style, R5 style, Chopper style, BB-8 style, Songbird</i>.
+      <b>Save as…</b> keeps your own variations.</li>
+    <li><b>Source: Synthesized</b> — the droid's voice is created by 22 sliders in three groups: pitch and
+      tempo, melody and mood, timbre. Every sound is a little different, like a real droid. Release a slider
+      to hear the result; <b>Surprise me</b> makes a random variation.</li>
+    <li><b>Source: Sound files</b> — use your own recordings (WAV, OGG, FLAC, MP3) for each kind of answer;
+      the droid picks one at random. Answers without files fall back to the synthesizer.</li>
+    <li><b>Listen</b> — play each kind of answer: acknowledged, error, not understood, and all the moods
+      used for reactions (victory, sad, scared, alarm, panic…).</li>
+  </ul>
+  <p>The master volume is in the Setup tab.</p>
+</section>
+
+<!-- ============================================================ EVENTS TAB -->
+<section class="chapter">
+  <h2>10 · The Events tab (game link)</h2>
+  <figure><img src="img/tab_events.png" alt="Events tab"><figcaption>The Events tab before the game link is installed.</figcaption></figure>
+  <h3>Game link</h3>
+  <p><b>Install game link</b> adds one small script to the mod. It only <i>reads</i> what happens in the game
+    and writes it to a file for Droid Commander; it never changes the game. Restart the game after installing.</p>
+  <ul>
+    <li><b>Mod folder</b> — found automatically (for FotG 2, its <code>FG_Core</code> package). If it isn't found,
+      press <b>Choose folder…</b> and pick the mod folder, e.g.
+      <code>…\Library\FotG_2\FotG_2-2.0.2</code>. <b>Automatic</b> goes back to automatic detection.</li>
+    <li>When Droid Commander is updated, the status may say <i>outdated</i>: press <b>Update game link</b>.</li>
+    <li><b>React to game events</b> switches all reactions on or off; <b>Remove</b> takes the script out of the mod.</li>
+  </ul>
+  <h3>Reactions</h3>
+  <p>For each event — a kill, a friendly ship lost, a hit on shields or hull, low or critical hull, a
+    collision, a lost subsystem, your death, mission start and end — choose:</p>
+  <ul>
+    <li><b>Droid response</b>: the kind of sound (victory, sad, scared, alarm, panic, greeting…);</li>
+    <li><b>Chance</b>: how often it reacts (100 = always);</li>
+    <li><b>Pause</b>: seconds before it reacts to the same event again.</li>
+  </ul>
+  <p>Your voice commands always come first: the droid doesn't chatter over its own answers.</p>
+</section>
+
+<!-- ============================================================ SETUP TAB -->
+<section class="chapter">
+  <h2>11 · The Setup tab</h2>
+  <figure><img src="img/tab_setup.png" alt="Setup tab"><figcaption>The Setup tab: microphone, listening mode, audio output and master volume.</figcaption></figure>
+  <ul>
+    <li><b>Microphone</b> — the input the droid listens to. <b>Test microphone</b> shows a live level bar:
+      speak and it should move ("✓ hearing you").</li>
+    <li><b>Talking to the droid</b> — <i>Always listening</i> or <i>Push-to-talk</i>. For push-to-talk press
+      <b>＋ Add key or button</b> and then press the key or button you want (keyboard, mouse, joystick,
+      throttle, gamepad). Hold it in this tab to test: its line lights up green. Controllers are remembered
+      by their name, so it keeps working if Windows renumbers them.</li>
+    <li><b>Droid audio output</b> — <i>Windows default</i> (recommended) works on every PC. Pick a specific
+      device to send the droid elsewhere, e.g. to speakers while the game uses your headset; press
+      <b>▶ Test</b>, and if it's silent go back to Windows default.</li>
+    <li><b>Master volume</b> — the loudness of every droid sound; saved immediately, also while flying.</li>
+  </ul>
+  <p>Press <b>Save</b>. Microphone, listening mode and output are used from the next LAUNCH!.</p>
+</section>
+
+<!-- ============================================================ LAUNCH -->
+<section class="chapter">
+  <h2>12 · LAUNCH! — the active view</h2>
+  <p>Press <b>LAUNCH!</b> to start listening. If something is unsaved, Droid Commander asks to save it first.
+    The window changes to a compact cockpit display:</p>
+  <ul>
+    <li>a <b>status lamp</b>: starting, listening, push-to-talk held;</li>
+    <li><b>Last heard</b> and <b>Last command</b>, so you can see what the droid understood;</li>
+    <li>the <b>game link</b> state ("connected — the droid reacts to game events");</li>
+    <li>a <b>log</b> of everything that happened.</li>
+  </ul>
+  <p><b>Minimize</b> sends it to the taskbar — it keeps listening. <b>Stop · Configure</b> stops listening and
+    brings back the editor. Changes you save in the editor (names, commands, reactions, volume, voice) are
+    picked up by a running droid by itself.</p>
+  <div class="tip"><b>Keep the game in front</b>The droid only presses keys while the game window is the
+    active one, so a command can never type into another program by mistake.</div>
+
+  <h2>13 · Multiplayer and fair play</h2>
+  <p>The game link also works in multiplayer, in <b>fair-play mode</b>: the droid only knows what your HUD
+    shows. For example, "are we clear?" counts only the enemies your radar can see — no stealth ships, nothing
+    out of sensor range. Everything else it reports (hits, kills, hull, shields, energy, your target) is
+    already on your HUD.</p>
+  <p>Voice commands press the same keys you would press. Ask your server admins whether they allow tools
+    like this before using it online.</p>
+</section>
+
+<!-- ============================================================ TROUBLESHOOTING -->
+<section class="chapter">
+  <h2>14 · Troubleshooting</h2>
+  <table>
+    <tr><th style="width:34%">Problem</th><th>What to do</th></tr>
+    <tr><td>The droid hears nothing</td><td>Setup tab → Test microphone. Pick the right input device, speak closer,
+      check the microphone isn't muted in Windows.</td></tr>
+    <tr><td>Many commands are "not understood"</td><td>Say the phrase exactly as written in the Commands tab, then add
+      your own wording as an extra phrase. Use a headset so the game sound doesn't reach the microphone.</td></tr>
+    <tr><td>It understands but nothing happens in the game</td><td>Look for ⚠ in the Commands tab: the key isn't found
+      in your controls (often bound only to a joystick). Add a keyboard key in the game's control options.
+      Check the Game controls point to the right pilot.</td></tr>
+    <tr><td>Error beep: "the game is not in the foreground"</td><td>Click into the game window. If the game runs as
+      administrator, run Droid Commander as administrator too.</td></tr>
+    <tr><td>I can't hear the droid</td><td>Setup tab → output <i>Windows default</i> → ▶ Test. Check the master volume
+      and the Windows volume mixer.</td></tr>
+    <tr><td>The droid doesn't react to the game</td><td>Events tab: install or <b>Update game link</b>, restart the game,
+      start a mission. If Fate of the Galaxy isn't found, use <b>Choose folder…</b>. "Last game event received"
+      shows whether events are arriving.</td></tr>
+    <tr><td>"Squad Alpha…" gives the error beep</td><td>That wing isn't in the mission or has no ships left, or the game
+      link isn't installed. Check the name is in Droid tab → Wing names.</td></tr>
+    <tr><td>Questions always get a puzzled beep</td><td>The droid can only answer during a mission, with the game link
+      installed.</td></tr>
+    <tr><td>Push-to-talk doesn't react</td><td>Setup tab: hold the button and check its line lights up. Choose
+      <i>Push-to-talk</i> mode and Save, then LAUNCH! again.</td></tr>
+  </table>
+</section>
+
+<!-- ============================================================ REFERENCE -->
+<section class="chapter">
+  <h2>15 · Command reference</h2>
+  <p>The commands that come with Droid Commander. Start each one with your droid's name ("R2, …") unless
+    it's addressed to the wingmen. All of them can be changed in the Commands tab.</p>
+  <table>
+    <tr><th style="width:30%">Command</th><th>Say (examples)</th></tr>
+    <tr><td>Toggle S-foils</td><td>open s-foils · close s-foils · lock s-foils</td></tr>
+    <tr><td>Toggle targeting computer</td><td>targeting computer</td></tr>
+    <tr><td>Stationary target mode</td><td>stationary target mode</td></tr>
+    <tr><td>Toggle glide</td><td>toggle glide · glide mode</td></tr>
+    <tr><td>Target next / previous</td><td>next target · previous target</td></tr>
+    <tr><td>Target nearest enemy</td><td>target nearest enemy · nearest enemy</td></tr>
+    <tr><td>Target attacker</td><td>who is shooting me · target my attacker</td></tr>
+    <tr><td>Target friendly</td><td>target nearest friendly</td></tr>
+    <tr><td>Target bomb</td><td>target next bomb · target missile</td></tr>
+    <tr><td>Target newest</td><td>target newest ship · target new arrival</td></tr>
+    <tr><td>Target turret</td><td>target next turret</td></tr>
+    <tr><td>Target target's target</td><td>target its target</td></tr>
+    <tr><td>Clear target</td><td>clear target · stop targeting</td></tr>
+    <tr><td>Match speed</td><td>match speed · match target speed</td></tr>
+    <tr><td>Throttle</td><td>full throttle · punch it · all stop · one third throttle · two thirds throttle</td></tr>
+    <tr><td>Full power</td><td>full power to engines / weapons / shields</td></tr>
+    <tr><td>Boost</td><td>boost engines / weapons / shields</td></tr>
+    <tr><td>Balance power</td><td>balance power · reset power</td></tr>
+    <tr><td>Shields</td><td>equalize shields · shields front · shields rear</td></tr>
+    <tr><td>Engage hyperdrive</td><td>engage hyperdrive · jump to light speed</td></tr>
+    <tr><td>Questions</td><td>are you OK · are we hit · how are the shields · did we get him · are we clear ·
+      is the target damaged · do we have energy</td></tr>
+  </table>
+  <div class="keep">
+  <h3>Wingmen ("Wingmen, …" or "Squad Alpha, …")</h3>
+  <table>
+    <tr><th style="width:30%">Order</th><th>Say</th></tr>
+    <tr><td>Attack</td><td>attack my target</td></tr>
+    <tr><td>Disable / disarm</td><td>disable my target · disarm my target</td></tr>
+    <tr><td>Attack subsystem</td><td>destroy subsystem</td></tr>
+    <tr><td>Protect / ignore</td><td>protect my target · ignore my target</td></tr>
+    <tr><td>Form up</td><td>form on my wing · form up</td></tr>
+    <tr><td>Cover</td><td>cover me</td></tr>
+    <tr><td>Engage</td><td>engage enemy · engage at will</td></tr>
+    <tr><td>Depart</td><td>depart · jump out</td></tr>
+  </table>
+  </div>
+
+  <h2>16 · Uninstalling</h2>
+  <ol>
+    <li>Events tab → <b>Remove</b>, to take the game link script out of the mod.</li>
+    <li>Windows Settings → Apps → <b>Droid Commander</b> → Uninstall.</li>
+    <li>Optional: delete <code>%APPDATA%\DroidCommander</code> to remove your settings and voices too.</li>
+  </ol>
+  <p style="margin-top:8mm;color:var(--dim);font-size:9pt">Droid Commander 1.0.0 · Speech recognition by Vosk
+    (offline). Star Wars is a trademark of Lucasfilm Ltd. Fate of the Galaxy is a fan-made mod for FreeSpace Open.
+    This is an unofficial fan tool.</p>
+</section>
+
+</body>
+</html>
