@@ -1,0 +1,79 @@
+{
+    "bindings_file": "",
+    "fso_players_dir": "",
+    "pilot": null,
+    "follow_pilot": false,
+    "control_labels_file": "",
+    "model_path": "models/vosk-model-small-en-us-0.15",
+    "microphone": null,
+    "droid": {
+        "name": "R2",
+        "wake_words": [
+            "r two",
+            "r to",
+            "are two",
+            "are to"
+        ]
+    },
+    "callsigns": {
+        "Wingmen": [
+            "wing men",
+            "wingman",
+            "wing man",
+            "squadron",
+            "flight"
+        ]
+    },
+    "activation": {
+        "wake_word": {
+            "enabled": true
+        },
+        "push_to_talk": {
+            "enabled": false,
+            "require_wake_word": false,
+            "preroll_ms": 300,
+            "tail_ms": 300,
+            "triggers": [
+                {
+                    "type": "keyboard",
+                    "key": "KEY_RCTRL",
+                    "enabled": true
+                },
+                {
+                    "type": "joystick",
+                    "joy_id": -1,
+                    "button": 6,
+                    "enabled": false
+                },
+                {
+                    "type": "pov",
+                    "joy_id": -1,
+                    "direction": "down",
+                    "enabled": false
+                }
+            ]
+        }
+    },
+    "recognition": {
+        "min_confidence": 0.55,
+        "fuzzy_match": 0.75
+    },
+    "game": {
+        "require_focus": true,
+        "process_names": [
+            "fs2_open"
+        ],
+        "key_hold_ms": 60,
+        "key_gap_ms": 50
+    },
+    "sound": {
+        "folder": "sounds",
+        "volume": 0.8,
+        "backend": "winsound",
+        "voices_file": "config/voices.json",
+        "output_device": null
+    },
+    "game_link": {
+        "enabled": true
+    }
+}

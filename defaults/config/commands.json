@@ -1,0 +1,251 @@
+{
+    "commands": [
+        {
+            "name": "Toggle S-foils",
+            "phrases": ["open s foils", "close s foils", "lock s foils", "toggle s foils", "open s foil", "close s foil", "s foils attack position"],
+            "actions": [{"bind": "CUSTOM_CONTROL_3"}],
+            "sound": "ack"
+        },
+        {
+            "name": "Toggle targeting computer",
+            "phrases": ["targeting computer", "toggle targeting computer"],
+            "actions": [{"bind": "CUSTOM_CONTROL_1"}]
+        },
+        {
+            "name": "Stationary target mode",
+            "phrases": ["stationary target mode", "toggle stationary target"],
+            "actions": [{"bind": "CUSTOM_CONTROL_5"}]
+        },
+        {
+            "name": "Toggle glide",
+            "phrases": ["toggle glide", "glide mode"],
+            "actions": [{"bind": "TOGGLE_GLIDING"}]
+        },
+        {
+            "name": "Target next",
+            "phrases": ["next target", "target next"],
+            "actions": [{"bind": "TARGET_NEXT"}]
+        },
+        {
+            "name": "Target previous",
+            "phrases": ["previous target", "target previous"],
+            "actions": [{"bind": "TARGET_PREV"}]
+        },
+        {
+            "name": "Target nearest enemy",
+            "phrases": ["target nearest enemy", "nearest enemy", "target closest enemy"],
+            "actions": [{"bind": "TARGET_NEXT_CLOSEST_HOSTILE"}],
+            "sound": "ack"
+        },
+        {
+            "name": "Target attacker",
+            "phrases": ["who is shooting me", "target my attacker", "target attacker"],
+            "actions": [{"bind": "TARGET_CLOSEST_SHIP_ATTACKING_SELF"}]
+        },
+        {
+            "name": "Target friendly",
+            "phrases": ["target nearest friendly", "target friendly"],
+            "actions": [{"bind": "TARGET_NEXT_CLOSEST_FRIENDLY"}]
+        },
+        {
+            "name": "Target bomb",
+            "phrases": ["target next bomb", "target bomb", "target missile"],
+            "actions": [{"bind": "TARGET_NEXT_BOMB"}]
+        },
+        {
+            "name": "Target newest",
+            "phrases": ["target newest ship", "target new arrival"],
+            "actions": [{"bind": "TARGET_NEWEST_SHIP"}]
+        },
+        {
+            "name": "Target turret",
+            "phrases": ["target next turret", "target turret"],
+            "actions": [{"bind": "TARGET_NEXT_LIVE_TURRET"}]
+        },
+        {
+            "name": "Target target's target",
+            "phrases": ["target its target"],
+            "actions": [{"bind": "TARGET_TARGETS_TARGET"}]
+        },
+        {
+            "name": "Clear target",
+            "phrases": ["clear target", "stop targeting"],
+            "actions": [{"bind": "STOP_TARGETING_SHIP"}]
+        },
+        {
+            "name": "Match speed",
+            "phrases": ["match speed", "match target speed"],
+            "actions": [{"bind": "MATCH_TARGET_SPEED"}]
+        },
+        {
+            "name": "Full throttle",
+            "phrases": ["full throttle", "full speed", "punch it"],
+            "actions": [{"bind": "MAX_THROTTLE"}]
+        },
+        {
+            "name": "All stop",
+            "phrases": ["all stop", "full stop", "cut engines"],
+            "actions": [{"bind": "ZERO_THROTTLE"}]
+        },
+        {
+            "name": "One third throttle",
+            "phrases": ["one third throttle", "one third speed"],
+            "actions": [{"bind": "ONE_THIRD_THROTTLE"}]
+        },
+        {
+            "name": "Two thirds throttle",
+            "phrases": ["two thirds throttle", "two thirds speed"],
+            "actions": [{"bind": "TWO_THIRDS_THROTTLE"}]
+        },
+        {
+            "name": "Power to engines",
+            "phrases": ["full power to engines", "all power to engines", "max engines"],
+            "actions": [{"bind": "INCREASE_ENGINE", "repeat": 6}]
+        },
+        {
+            "name": "Power to weapons",
+            "phrases": ["full power to weapons", "all power to weapons", "max weapons", "max lasers"],
+            "actions": [{"bind": "INCREASE_WEAPON", "repeat": 6}]
+        },
+        {
+            "name": "Power to shields",
+            "phrases": ["full power to shields", "all power to shields", "max shields"],
+            "actions": [{"bind": "INCREASE_SHIELD", "repeat": 6}]
+        },
+        {
+            "name": "Boost engines",
+            "phrases": ["boost engines", "more power to engines"],
+            "actions": [{"bind": "INCREASE_ENGINE"}]
+        },
+        {
+            "name": "Boost weapons",
+            "phrases": ["boost weapons", "more power to weapons"],
+            "actions": [{"bind": "INCREASE_WEAPON"}]
+        },
+        {
+            "name": "Boost shields",
+            "phrases": ["boost shields", "more power to shields"],
+            "actions": [{"bind": "INCREASE_SHIELD"}]
+        },
+        {
+            "name": "Balance power",
+            "phrases": ["balance power", "equalize power", "reset power"],
+            "actions": [{"bind": "ETS_EQUALIZE"}]
+        },
+        {
+            "name": "Equalize shields",
+            "phrases": ["equalize shields", "balance shields"],
+            "actions": [{"bind": "SHIELD_EQUALIZE"}]
+        },
+        {
+            "name": "Shields front",
+            "phrases": ["shields front", "double front shields", "angle deflector forward"],
+            "actions": [{"bind": "SHIELD_XFER_TOP"}]
+        },
+        {
+            "name": "Shields rear",
+            "phrases": ["shields rear", "double rear shields", "angle deflector back"],
+            "actions": [{"bind": "SHIELD_XFER_BOTTOM"}]
+        },
+        {
+            "name": "Wingmen attack",
+            "phrases": ["attack my target"],
+            "actions": [{"bind": "ATTACK_MESSAGE"}],
+            "call": "Wingmen"
+        },
+        {
+            "name": "Wingmen disable",
+            "phrases": ["disable my target"],
+            "actions": [{"bind": "DISABLE_MESSAGE"}],
+            "call": "Wingmen"
+        },
+        {
+            "name": "Wingmen disarm",
+            "phrases": ["disarm my target"],
+            "actions": [{"bind": "DISARM_MESSAGE"}],
+            "call": "Wingmen"
+        },
+        {
+            "name": "Wingmen attack subsystem",
+            "phrases": ["destroy subsystem", "destroy my subsystem"],
+            "actions": [{"bind": "ATTACK_SUBSYSTEM_MESSAGE"}],
+            "call": "Wingmen"
+        },
+        {
+            "name": "Wingmen protect",
+            "phrases": ["protect my target"],
+            "actions": [{"bind": "PROTECT_MESSAGE"}],
+            "call": "Wingmen"
+        },
+        {
+            "name": "Wingmen ignore",
+            "phrases": ["ignore my target"],
+            "actions": [{"bind": "IGNORE_MESSAGE"}],
+            "call": "Wingmen"
+        },
+        {
+            "name": "Wingmen form up",
+            "phrases": ["form on my wing", "form up"],
+            "actions": [{"bind": "FORM_MESSAGE"}],
+            "call": "Wingmen"
+        },
+        {
+            "name": "Wingmen cover",
+            "phrases": ["cover me"],
+            "actions": [{"bind": "COVER_MESSAGE"}],
+            "call": "Wingmen"
+        },
+        {
+            "name": "Wingmen engage",
+            "phrases": ["engage enemy", "engage at will"],
+            "actions": [{"bind": "ENGAGE_MESSAGE"}],
+            "call": "Wingmen"
+        },
+        {
+            "name": "Wingmen depart",
+            "phrases": ["depart", "jump out"],
+            "actions": [{"bind": "WARP_MESSAGE"}],
+            "call": "Wingmen"
+        },
+        {
+            "name": "Engage hyperdrive",
+            "phrases": ["engage hyperdrive", "jump to hyperspace", "jump to light speed"],
+            "actions": [{"bind": "END_MISSION"}]
+        },
+        {
+            "name": "Ask: are you OK",
+            "phrases": ["are you ok", "are you okay", "how are you", "status report", "are you all right"],
+            "actions": [{"ask": "status"}]
+        },
+        {
+            "name": "Ask: are we hit",
+            "phrases": ["are we hit", "are we damaged", "damage report", "how bad is it"],
+            "actions": [{"ask": "damage"}]
+        },
+        {
+            "name": "Ask: shields",
+            "phrases": ["how are the shields", "shield status", "are the shields up"],
+            "actions": [{"ask": "shields"}]
+        },
+        {
+            "name": "Ask: did we get him",
+            "phrases": ["did we get him", "did i get him", "is he dead", "got him"],
+            "actions": [{"ask": "kill"}]
+        },
+        {
+            "name": "Ask: are we clear",
+            "phrases": ["are we clear", "is it clear", "any more enemies", "anyone left"],
+            "actions": [{"ask": "clear"}]
+        },
+        {
+            "name": "Ask: target damaged",
+            "phrases": ["is the target damaged", "target status", "how is the target"],
+            "actions": [{"ask": "target"}]
+        },
+        {
+            "name": "Ask: weapon energy",
+            "phrases": ["do we have energy", "weapons status", "are the weapons charged"],
+            "actions": [{"ask": "energy"}]
+        }
+    ]
+}

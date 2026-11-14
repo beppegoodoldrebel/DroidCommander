@@ -4,15 +4,15 @@ __pycache__/
 *.pyc
 
 # build output (PyInstaller, Inno Setup); the installer is published as a GitHub Release
-build/
-dist/
+/build/
+/dist/
 
 # speech model: downloaded by download_model.py (about 40 MB)
-models/
+/models/
 
 # your own settings, commands and voices (the app starts from defaults/config)
-config/
-sounds/voices/
+/config/
+/sounds/voices/
 
 # generated test/demo audio
 *.wav
