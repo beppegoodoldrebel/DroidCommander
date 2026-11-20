@@ -73,6 +73,17 @@ PRETTY_KEYS = {"LCTRL": "Left Ctrl", "RCTRL": "Right Ctrl", "LSHIFT": "Left Shif
                "BACKSP": "Backspace", "ESC": "Esc"}
 
 
+def windows_key_name(name):
+    """The key's label on this PC's keyboard layout ('\\', 'ò'…), from Windows; None if unknown."""
+    sc = FSO_SCANCODES.get(name)
+    if sc is None:
+        return None
+    lparam = ((sc & 0x7F) << 16) | ((1 << 24) if sc >= 0x80 else 0)
+    buf = ctypes.create_unicode_buffer(64)
+    n = user32.GetKeyNameTextW(lparam, buf, 64)
+    return buf.value if n else None
+
+
 def key_label(name):
     """'KEY_RCTRL' -> 'Right Ctrl', 'KEY_PAD0' -> 'Numpad 0', 'MOUSE_X1' -> 'Mouse X1'."""
     if name.startswith("MOUSE_"):
@@ -80,6 +91,9 @@ def key_label(name):
     short = name[4:] if name.startswith("KEY_") else name
     if short in PRETTY_KEYS:
         return PRETTY_KEYS[short]
+    win = windows_key_name(name)
+    if win and len(win) == 1:                   # a character key: show what's printed on it
+        return win.upper() if win.isascii() else win
     if short.startswith("PAD"):
         return "Numpad " + short[3:].capitalize()
     return short.capitalize() if len(short) > 3 else short
