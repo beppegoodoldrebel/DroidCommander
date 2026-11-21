@@ -53,11 +53,13 @@ function DroidLink:ack(seq, status, detail)
 	end)
 end
 
--- the game's number for a control name such as "MAX_THROTTLE", or nil
+-- the game's number for a control name such as "MAX_THROTTLE", or nil.
+-- Note: control_info's button functions take no 'self' (call them with '.', not ':'),
+-- and FSO shows an error dialog for a wrong argument even inside pcall.
 function DroidLink:controlNumber(name)
 	local ci = self:controlInfo()
 	if ci == nil then return nil end
-	local ok, n = pcall(function() return ci:getButtonControlNumber(name) end)
+	local ok, n = pcall(function() return ci.getButtonControlNumber(name) end)
 	if ok and type(n) == "number" and n >= 0 then return n end
 	return nil
 end
@@ -114,13 +116,13 @@ function DroidLink:pressControls()
 	local ci = self:controlInfo()
 	if ci == nil then return end
 	if self.pressed then
-		pcall(function() ci:clearLuaButtonInfo() end)
+		pcall(function() ci.clearLuaButtonInfo() end)
 		self.pressed = false
 		return
 	end
 	local a = self.queue[1]
 	if a == nil then return end
-	pcall(function() ci:useButtonControl(a.num, a.name) end)
+	pcall(function() ci.useButtonControl(-1, a.name) end)    -- -1: by name
 	self.pressed = true
 	a.count = a.count - 1
 	if a.count <= 0 then table.remove(self.queue, 1) end
@@ -137,7 +139,7 @@ function DroidLink:resetCommands()
 	self.last_cmd = -1
 	pcall(function() ba.setButtonControlMode(BUTTON_CONTROL_LUA_ADDITIVE) end)
 	local ci = self:controlInfo()
-	if ci ~= nil then pcall(function() ci:clearLuaButtonInfo() end) end
+	if ci ~= nil then pcall(function() ci.clearLuaButtonInfo() end) end
 	self:readCommands(true)          -- commands written before this mission are not run
 end
 
