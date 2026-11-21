@@ -1015,18 +1015,29 @@ class Editor:
         if c is None:
             return
         cmd = copy.deepcopy(c)
+        from .luacmd import LuaControls, can_run
+        try:
+            gl = load_json(self.settings_path).get("game_link") or {}     # the Events tab may have changed it
+        except (OSError, ValueError):
+            gl = {}
+        if gl.get("press_controls", True):
+            self.executor.lua = LuaControls(lambda: self.bindings.players_dir)
+        else:
+            self.executor.lua = None
         try:
             self.executor.plan(cmd)
         except CommandError as e:
-            messagebox.showerror("Can't test", str(e), parent=self.root)
-            return
+            if not (self.executor.lua and can_run(cmd)):    # the game link may still press it
+                messagebox.showerror("Can't test", str(e), parent=self.root)
+                return
         self.test_btn.state(["disabled"])
         outcome = queue.Queue()
 
         def run():    # background thread: never touch tkinter here
             try:
                 self.executor.execute(cmd)
-                outcome.put(("✓ Done", "Ok.TLabel", cmd.get("sound", "ack")))
+                via = " (via game link)" if self.executor.last_route == "game link" else " (keys)"
+                outcome.put(("✓ Done" + via, "Ok.TLabel", cmd.get("sound", "ack")))
             except CommandError as e:
                 outcome.put((f"⚠ {e}", "Warn.TLabel", "error"))
 

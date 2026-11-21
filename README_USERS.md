@@ -33,7 +33,8 @@ Your settings are kept in `%APPDATA%\DroidCommander` and survive updates.
 2. **Setup tab:** pick your **microphone** and press **Test microphone** — the bar must move
    when you speak. Leave the audio output on *Windows default* unless you need something else.
 3. **Events tab → Install game link** (restart the game if it is running). This lets the droid
-   react to the game and answer questions.
+   react to the game and answer questions, and it presses your commands' controls from inside
+   the game (any keyboard layout, joystick-only controls too).
 4. Press **LAUNCH!**. The window switches to the active view and shows *LISTENING*.
 5. Start a mission and say: **"R2, full throttle"**.
 

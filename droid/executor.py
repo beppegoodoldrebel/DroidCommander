@@ -18,6 +18,9 @@ class Executor:
         self.process_names = game_settings.get("process_names", ["fs2_open"])
         self.hold_ms = game_settings.get("key_hold_ms", 60)
         self.gap_ms = game_settings.get("key_gap_ms", 50)
+        self.lua = None              # luacmd.LuaControls: press controls through the game link
+        self.last_route = None       # how the last command was sent: "game link" or "keys"
+        self.last_note = ""          # why the game link wasn't used, or what it pressed
 
     def plan(self, command):
         """Validate a command and return a list of steps. Raises CommandError."""
@@ -65,6 +68,16 @@ class Executor:
             raise CommandError(f"the game is not in the foreground (active window: '{name or '?'}')")
 
     def execute(self, command):
+        self.last_note = ""
+        if self.lua is not None:
+            from .luacmd import can_run
+            if can_run(command):
+                ok, note = self.lua.send(command)
+                self.last_note = note
+                if ok:
+                    self.last_route = "game link"
+                    return []
+        self.last_route = "keys"
         steps = self.plan(command)
         self.check_focus()
         for kind, value, hold in steps:

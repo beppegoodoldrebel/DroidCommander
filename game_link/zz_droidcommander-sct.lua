@@ -4,7 +4,11 @@
 -- as text lines to "droid_link.log", which Droid Commander reads so the droid can react, and
 -- once a second a snapshot of your ship (hull, shields, energy, target, enemies left) to
 -- "droid_state.txt", so the droid can answer questions like "are you ok?".
--- It only observes the game: it never changes anything in it.
+--
+-- Voice commands: Droid Commander writes the game controls to press (e.g. MAX_THROTTLE) to
+-- "droid_cmd.txt"; this script presses them through FSO's Lua button controls, exactly as if
+-- you pressed their key, and confirms in "droid_ack.txt". It presses nothing else and changes
+-- nothing else in the game.
 --
 -- Multiplayer: it runs in fair-play mode, so the droid only knows what your HUD shows:
 -- "enemies left" counts only the hostile ships your radar can see (no stealth ships,
@@ -24,7 +28,118 @@ DroidLink = {
 	hull_level = 0,               -- how many marks have been passed
 	next_check = 0,
 	enabled = true,
+	-- voice commands (game controls pressed for Droid Commander)
+	cmd_file = "droid_cmd.txt",       -- written by Droid Commander: "<seq>|ACTION:count,ACTION:count"
+	ack_file = "droid_ack.txt",       -- our answer: "<seq>|ok|..." or "<seq>|fail|reason"
+	last_cmd = -1,                    -- last command seq handled (-1: not read yet)
+	queue = {},                       -- {num, name, count} controls still to press
+	pressed = false,                  -- a control is held this frame (released on the next)
+	frame = 0,
 }
+
+-- ---------------------------------------------------------------- voice commands
+function DroidLink:controlInfo()
+	if self.ci == nil then pcall(function() self.ci = ba.getControlInfo() end) end
+	return self.ci
+end
+
+function DroidLink:ack(seq, status, detail)
+	pcall(function()
+		local f = cf.openFile(self.ack_file, "w", self.path)
+		if f ~= nil and f:isValid() then
+			f:write(string.format("%s|%s|%s\n", tostring(seq), status, detail or ""))
+			f:close()
+		end
+	end)
+end
+
+-- the game's number for a control name such as "MAX_THROTTLE", or nil
+function DroidLink:controlNumber(name)
+	local ci = self:controlInfo()
+	if ci == nil then return nil end
+	local ok, n = pcall(function() return ci:getButtonControlNumber(name) end)
+	if ok and type(n) == "number" and n >= 0 then return n end
+	return nil
+end
+
+-- read droid_cmd.txt; with skip, only remember where it is (old commands are never run)
+function DroidLink:readCommands(skip)
+	local lines = {}
+	pcall(function()
+		local f = cf.openFile(self.cmd_file, "r", self.path)
+		if f == nil or not f:isValid() then return end
+		for _ = 1, 50 do
+			local line = f:read("*l")
+			if line == nil then break end
+			lines[#lines + 1] = line
+		end
+		f:close()
+	end)
+	for _, line in ipairs(lines) do
+		local seq, body = line:match("^(%d+)|(.*)$")
+		seq = tonumber(seq)
+		if seq ~= nil and seq > self.last_cmd then
+			self.last_cmd = seq
+			if not skip then self:runCommand(seq, body) end
+		end
+	end
+	if self.last_cmd < 0 then self.last_cmd = 0 end
+end
+
+function DroidLink:runCommand(seq, body)
+	if self:controlInfo() == nil then
+		self:ack(seq, "fail", "no Lua control info in this FSO build")
+		return
+	end
+	local actions, missing, used = {}, {}, {}
+	for name, count in body:gmatch("([%w_]+):(%d+)") do
+		local n = self:controlNumber(name)
+		if n == nil then
+			missing[#missing + 1] = name
+		else
+			actions[#actions + 1] = {num = n, name = name, count = tonumber(count)}
+			used[#used + 1] = name .. "=" .. n
+		end
+	end
+	if #missing > 0 or #actions == 0 then
+		self:ack(seq, "fail", "unknown control " .. table.concat(missing, ","))
+		return
+	end
+	for _, a in ipairs(actions) do self.queue[#self.queue + 1] = a end
+	self:ack(seq, "ok", table.concat(used, ","))
+end
+
+-- every frame: hold a queued control for one frame, release it for one frame, next one...
+function DroidLink:pressControls()
+	local ci = self:controlInfo()
+	if ci == nil then return end
+	if self.pressed then
+		pcall(function() ci:clearLuaButtonInfo() end)
+		self.pressed = false
+		return
+	end
+	local a = self.queue[1]
+	if a == nil then return end
+	pcall(function() ci:useButtonControl(a.num, a.name) end)
+	self.pressed = true
+	a.count = a.count - 1
+	if a.count <= 0 then table.remove(self.queue, 1) end
+end
+
+function DroidLink:commandsTick()
+	self.frame = self.frame + 1
+	self:pressControls()
+	if self.frame % 5 == 0 then self:readCommands(self.last_cmd < 0) end
+end
+
+function DroidLink:resetCommands()
+	self.queue, self.pressed, self.ci = {}, false, nil
+	self.last_cmd = -1
+	pcall(function() ba.setButtonControlMode(BUTTON_CONTROL_LUA_ADDITIVE) end)
+	local ci = self:controlInfo()
+	if ci ~= nil then pcall(function() ci:clearLuaButtonInfo() end) end
+	self:readCommands(true)          -- commands written before this mission are not run
+end
 
 function DroidLink:write(event, detail)
 	if not self.enabled then return end
@@ -104,6 +219,7 @@ end
 function DroidLink:reset()
 	self.enabled = true
 	self:readStartingWings()
+	self:resetCommands()
 	self.seq = 0
 	self.hull_level = 0
 	self.next_check = 0
@@ -235,6 +351,7 @@ end
 
 -- check the hull a few times per second, report each mark once (it rises again after repairs)
 function DroidLink:onSimulation()
+	pcall(function() self:commandsTick() end)
 	local now = 0
 	pcall(function() now = mn.getMissionTime() or 0 end)
 	if self.enabled and now >= self.next_state then

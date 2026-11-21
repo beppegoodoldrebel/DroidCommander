@@ -22,6 +22,7 @@ class EventsTab(ttk.Frame):
         self.cfg = gamelink.event_config(s)
         self.link_enabled = tk.BooleanVar(value=(s.get("game_link") or {}).get("enabled", True))
         self.manual_mod = (s.get("game_link") or {}).get("mod_dir") or None
+        self.press_controls = tk.BooleanVar(value=(s.get("game_link") or {}).get("press_controls", True))
         gamelink.MANUAL_MOD_DIR = self.manual_mod
 
         # ---- game link
@@ -36,6 +37,8 @@ class EventsTab(ttk.Frame):
         self.install_btn.pack(side="right", padx=6)
         ttk.Checkbutton(row, text="React to game events", variable=self.link_enabled,
                         command=self.mark_dirty).pack(side="right", padx=16)
+        ttk.Checkbutton(row, text="Press controls through the game link", variable=self.press_controls,
+                        command=self.mark_dirty).pack(side="right")
         row = ttk.Frame(box)
         row.pack(fill="x", pady=(6, 0))
         ttk.Label(row, text="Mod folder:").pack(side="left")
@@ -106,11 +109,14 @@ class EventsTab(ttk.Frame):
     def mod_dir(self):
         return gamelink.mod_dir(self.ed.bindings.players_dir, self.manual_mod)
 
+    def link_settings(self):
+        return {"enabled": bool(self.link_enabled.get()), "mod_dir": self.manual_mod,
+                "press_controls": bool(self.press_controls.get())}
+
     def save_mod_choice(self):
         with open(self.ed.settings_path, "r", encoding="utf-8-sig") as f:
             gl = dict(json.load(f).get("game_link") or {})
-        gl["enabled"] = bool(self.link_enabled.get())
-        gl["mod_dir"] = self.manual_mod
+        gl.update(self.link_settings())
         update_settings(self.ed.settings_path, {"game_link": gl})
         gamelink.MANUAL_MOD_DIR = self.manual_mod
         self.refresh_link()
@@ -155,8 +161,9 @@ class EventsTab(ttk.Frame):
         self.link_state.configure(text=text, fg=color)
         self.install_btn.configure(text="Update game link" if st == "outdated" else "Install game link")
         info = ("Adds one small script to the mod (data/tables/lua/" + gamelink.SCRIPT_NAME + "). "
-                "It only reads game events and writes them to a file for Droid Commander; it never "
-                "changes the game. ")
+                "It reads game events for Droid Commander and, if “Press controls through the game "
+                "link” is on, presses your voice commands' game controls from inside the game (as if "
+                "you pressed their key; keys are used when the game link can't). ")
         info += ("In multiplayer it runs in fair-play mode: the droid only knows what your HUD shows "
                  "(“enemies left” counts only ships on your radar). ")
         ev = gamelink.find_event_file(self.ed.bindings.players_dir)
@@ -227,8 +234,7 @@ class EventsTab(ttk.Frame):
             messagebox.showerror("Events", str(e), parent=self)
             return False
         update_settings(self.ed.settings_path, {"events": events,
-                                                "game_link": {"enabled": bool(self.link_enabled.get()),
-                                                              "mod_dir": self.manual_mod}})
+                                                "game_link": self.link_settings()})
         self.dirty = False
         self.state_label.configure(text="")
         self.ed.set_status("Event reactions saved. A running Droid Commander uses them right away.")

@@ -123,8 +123,18 @@ squealing when your hull is hit, alarm when the hull is low, and so on.
   - It hooks the game's events (`On Ship Death`, `On Pain Flash`, `On Simulation`,
     `On Ship Collision`, `On Subsystem Destroyed`, mission start/end) and appends them to
     `droid_link.log` in FreeSpace Open's user folder (`…/FreeSpaceOpen/<mod>/data/missions/`).
-  - It only observes the game, never changes it, and runs every handler protected so it
-    can't interrupt the game.
+  - It runs every handler protected so it can't interrupt the game.
+  - **Pressing controls from inside the game** (*Press controls through the game link*, on by
+    default): a voice command made only of game actions ("bind", e.g. `MAX_THROTTLE`, with
+    repeats) is written to `droid_cmd.txt`; the script reads it about 12 times per second,
+    presses each control with FSO's Lua button controls (`ba.setButtonControlMode(
+    BUTTON_CONTROL_LUA_ADDITIVE)`, `ControlInfo:useButtonControl`: held one frame, released one
+    frame) and answers in `droid_ack.txt`. Benefits: no keyboard-layout issues, controls bound
+    only to a joystick work, and the game window doesn't need the focus. Droid Commander falls
+    back to pressing keys when no mission is running, the script doesn't answer within 0.6 s,
+    or it doesn't know the control. Commands with fixed keys, mouse buttons, pauses or held
+    keys, and wingman orders (comm menu numbers), always use the keyboard. Commands left in
+    the file from before a mission starts are never run.
   - **Multiplayer:** it works there too, in fair-play mode: the droid only knows what your HUD shows:
     "are we clear?" counts only hostiles your radar can see (`checkVisibility`), not stealth
     ships or ships out of sensor range. Everything else it reports (hits, kills, hull,

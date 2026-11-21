@@ -42,6 +42,11 @@ class DroidApp:
         self._settings_mtime = os.path.getmtime(settings_path) if settings_path else None
         self.bindings = BindingStore.from_settings(settings)
         self.executor = Executor(self.bindings, settings.get("game", {}))
+        gl = settings.get("game_link") or {}
+        gamelink.MANUAL_MOD_DIR = gl.get("mod_dir") or None
+        if gl.get("press_controls", True):
+            from .luacmd import LuaControls       # press controls inside the game, keys as fallback
+            self.executor.lua = LuaControls(lambda: self.bindings.players_dir)
         snd = settings.get("sound", {})
         self.sounds = SoundBank(snd.get("folder", "sounds"), snd.get("volume", 0.8),
                                 snd.get("output_device"), snd.get("backend", "winsound"),
@@ -214,7 +219,12 @@ class DroidApp:
                         raise CommandError(str(e))
                     cmd = dict(cmd, actions=list(cmd.get("actions", [])) + extra)
                 self.executor.execute(cmd)
-                self.emit("command", name=cmd["name"], ok=True)
+                ex = self.executor
+                if ex.last_route == "game link":
+                    print(f"  via game link: {ex.last_note}")
+                elif ex.lua is not None and ex.last_note and self.verbose:
+                    print(f"  keys (game link not used: {ex.last_note})")
+                self.emit("command", name=cmd["name"], ok=True, route=ex.last_route)
                 self.reactions.command_answered()
                 self.sounds.play(cmd.get("sound", "ack"))
             except CommandError as e:
