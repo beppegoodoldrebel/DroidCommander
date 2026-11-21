@@ -212,6 +212,16 @@ function DroidLink:runCommand(seq, body)
 		self:startOrder(seq, shortcut, target)
 		return
 	end
+	local names = body:match("^check:(.*)$")
+	if names ~= nil then             -- which controls does this game know? (presses nothing)
+		local known, unknown = {}, {}
+		for name in names:gmatch("[%w_]+") do
+			if self:controlNumber(name) ~= nil then known[#known + 1] = name
+			else unknown[#unknown + 1] = name end
+		end
+		self:ack(seq, "ok", "known=" .. table.concat(known, ",") .. ";unknown=" .. table.concat(unknown, ","))
+		return
+	end
 	local actions, missing, used = {}, {}, {}
 	for name, count in body:gmatch("([%w_]+):(%d+)") do
 		local n = self:controlNumber(name)

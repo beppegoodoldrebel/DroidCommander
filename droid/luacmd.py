@@ -59,6 +59,19 @@ class LuaControls:
         target = f"wing:{wing}" if wing else "all"
         return self._roundtrip(f"order:{shortcut}:{target}", ORDER_TIMEOUT)
 
+    def check(self, names):
+        """Ask the game which control names it knows, without pressing anything.
+
+        Returns (known set, unknown set), or raises RuntimeError with the reason.
+        """
+        names = sorted(set(names))
+        ok, note = self._roundtrip("check:" + ",".join(names), ACK_TIMEOUT)
+        if not ok:
+            raise RuntimeError(note)
+        parts = dict(p.split("=", 1) for p in note.split(";") if "=" in p)
+        split = lambda s: {n for n in s.split(",") if n}
+        return split(parts.get("known", "")), split(parts.get("unknown", ""))
+
     def _roundtrip(self, body, timeout):
         """Write a command, wait for the game's answer. self.answered: the game did answer."""
         self.answered = False

@@ -701,6 +701,7 @@ class Editor:
         self.try_info.pack(side="left")
         ttk.Button(bottom, text="Save", style="Accent.TButton", command=self.save).pack(side="right")
         ttk.Button(bottom, text="Reload", command=self.reload).pack(side="right", padx=6)
+        ttk.Button(bottom, text="▶ Test all in game…", command=self.test_all).pack(side="right", padx=(0, 12))
 
         r.bind("<Control-s>", lambda e: self.save())
         r.protocol("WM_DELETE_WINDOW", self.on_close)
@@ -1010,6 +1011,10 @@ class Editor:
             self.changed()
 
     # ------------------------------------------------------ test / try
+    def test_all(self):
+        from .test_all import TestAllDialog
+        TestAllDialog(self)
+
     def test_command(self):
         c = self.cmd()
         if c is None:

@@ -143,6 +143,10 @@ squealing when your hull is hit, alarm when the hull is low, and so on.
     or it doesn't know the control. Commands with fixed keys, mouse buttons, pauses or held
     keys always use the keyboard; wingman orders go through the comm menu functions (see
     *Orders to wingmen*). Commands left in the file from before a mission starts are never run.
+    **Commands → ▶ Test all in game…** (droid/test_all.py) tries every command at once during
+    a mission: *Check names* sends `check:NAME,…` and the script answers which controls the
+    game knows (nothing pressed); *Press all* presses each command one every 2 s (wingman
+    orders optional, to all fighters; END_MISSION and WARP_MESSAGE are skipped).
     The Lua ADDITIVE button mode is on only while the script presses something: FSO copies
     the player's own buttons into the Lua buttons every frame in that mode, so leaving it on
     would make your own key presses repeat.
