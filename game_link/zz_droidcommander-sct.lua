@@ -34,6 +34,7 @@ DroidLink = {
 	last_cmd = -1,                    -- last command seq handled (-1: not read yet)
 	queue = {},                       -- {num, name, count} controls still to press
 	pressed = false,                  -- a control is held this frame (released on the next)
+	active = false,                   -- Lua ADDITIVE button mode is on (only while pressing)
 	frame = 0,
 }
 
@@ -111,17 +112,35 @@ function DroidLink:runCommand(seq, body)
 	self:ack(seq, "ok", table.concat(used, ","))
 end
 
+function DroidLink:setButtonMode(additive)
+	pcall(function()
+		ba.setButtonControlMode(additive and BUTTON_CONTROL_LUA_ADDITIVE or BUTTON_CONTROL_NORMAL)
+	end)
+	self.active = additive
+end
+
 -- every frame: hold a queued control for one frame, release it for one frame, next one...
+--
+-- FSO, every frame in ADDITIVE mode, ORs the Lua buttons into the player's buttons and then
+-- copies ALL the player's buttons (the keys you pressed too) back into the Lua buttons, which
+-- it never clears. So: ADDITIVE only while we press something, Lua buttons cleared every frame
+-- meanwhile, and back to NORMAL mode (where that copy is harmless) as soon as we're done.
+-- Otherwise a key you press yourself would repeat forever.
 function DroidLink:pressControls()
+	if not self.active and #self.queue == 0 then return end
 	local ci = self:controlInfo()
 	if ci == nil then return end
-	if self.pressed then
-		pcall(function() ci.clearLuaButtonInfo() end)
+	pcall(function() ci.clearLuaButtonInfo() end)
+	if self.pressed then                  -- release frame
 		self.pressed = false
 		return
 	end
 	local a = self.queue[1]
-	if a == nil then return end
+	if a == nil then                      -- all done
+		self:setButtonMode(false)
+		return
+	end
+	if not self.active then self:setButtonMode(true) end
 	pcall(function() ci.useButtonControl(-1, a.name) end)    -- -1: by name
 	self.pressed = true
 	a.count = a.count - 1
@@ -137,9 +156,9 @@ end
 function DroidLink:resetCommands()
 	self.queue, self.pressed, self.ci = {}, false, nil
 	self.last_cmd = -1
-	pcall(function() ba.setButtonControlMode(BUTTON_CONTROL_LUA_ADDITIVE) end)
 	local ci = self:controlInfo()
 	if ci ~= nil then pcall(function() ci.clearLuaButtonInfo() end) end
+	self:setButtonMode(false)        -- NORMAL until a voice command needs a control pressed
 	self:readCommands(true)          -- commands written before this mission are not run
 end
 
