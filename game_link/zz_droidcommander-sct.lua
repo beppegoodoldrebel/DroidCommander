@@ -89,9 +89,127 @@ function DroidLink:readCommands(skip)
 	if self.last_cmd < 0 then self.last_cmd = 0 end
 end
 
+-- ------------------------------------------------------------- wingman orders
+-- "order:COVER_MESSAGE:all" or "order:COVER_MESSAGE:wing:alpha": press the order's shortcut,
+-- which opens the comm menu with the order chosen, then pick "All Fighters", or "Wings" and
+-- the wing by its name, with the comm menu's own Lua functions (no number keys, so the
+-- position of a wing in the list doesn't matter).
+local function norm(s)
+	return (s:lower():gsub("[^%w]+", " "):gsub("^ +", ""):gsub(" +$", ""))
+end
+
+function DroidLink:commItems()
+	local items = {}
+	pcall(function()
+		-- read items until an invalid one: the indexer returns an invalid handle past the end
+		-- (comm_item has no isValid(): its Name is then "Invalid comm item!")
+		for i = 1, 40 do
+			local it = mn.CommItems[i]
+			local name = it and it.Name
+			if name == nil or name == "Invalid comm item!" then break end
+			items[#items + 1] = {item = it, name = name, active = it.Active}
+		end
+	end)
+	return items
+end
+
+function DroidLink:menuTitle(items)
+	local title = ""
+	if items[1] ~= nil then pcall(function() title = items[1].item:getMenuTitle() or "" end) end
+	return title
+end
+
+function DroidLink:startOrder(seq, shortcut, target)
+	if self.order ~= nil then
+		self:ack(seq, "fail", "busy with another order")
+		return
+	end
+	if self:controlNumber(shortcut) == nil then
+		self:ack(seq, "fail", "unknown control " .. shortcut)
+		return
+	end
+	local wing = target:match("^wing:(.+)$")
+	self.order = {seq = seq, shortcut = shortcut, wing = wing and norm(wing), stage = "type", frames = 0}
+	self.queue[#self.queue + 1] = {name = shortcut, count = 1}
+end
+
+function DroidLink:endOrder(ok, detail, close_menu)
+	local o = self.order
+	self.order = nil
+	if close_menu then          -- the shortcut opened the menu: toggle it closed again
+		self.queue[#self.queue + 1] = {name = "SQUADMSG_MENU", count = 1}
+	end
+	self:ack(o.seq, ok and "ok" or "fail", detail)
+end
+
+function DroidLink:orderTick()
+	local o = self.order
+	if o == nil or #self.queue > 0 or self.pressed then return end   -- shortcut still being pressed
+	o.frames = o.frames + 1
+	if o.frames > 60 then
+		self:endOrder(false, "the comm menu didn't respond", true)
+		return
+	end
+	local open = false
+	pcall(function() open = hu.isCommMenuOpen() end)
+	if not open then
+		if o.frames > 20 then self:endOrder(false, "the comm menu didn't open (comms damaged?)", false) end
+		return
+	end
+	local items = self:commItems()
+	if #items == 0 then return end                                     -- being rebuilt
+	if o.stage == "type" then
+		local want = o.wing and {"wings"} or {"all fighters", "all ships"}
+		local pos = o.wing and 2 or 3                                    -- Ships, Wings, All Fighters
+		local pick = nil
+		for _, it in ipairs(items) do
+			for _, w in ipairs(want) do if norm(it.name) == w then pick = it end end
+		end
+		pick = pick or items[pos]
+		if pick == nil or not pick.active then
+			self:endOrder(false, o.wing and "no wing can take that order" or "no fighters can take that order", true)
+			return
+		end
+		if o.wing == nil then
+			pcall(function() pick.item:selectItem() end)
+			self:endOrder(true, o.shortcut .. " -> " .. pick.name, false)
+			return
+		end
+		o.title = self:menuTitle(items)
+		pcall(function() pick.item:selectItem() end)
+		o.stage, o.frames = "wing", 0
+		return
+	end
+	-- stage "wing": wait for the wing list (its menu title differs), then pick the wing by name
+	if self:menuTitle(items) == o.title then return end
+	local exact, starts, names = nil, {}, {}
+	local words = o.wing .. " "
+	for _, it in ipairs(items) do
+		local n = norm(it.name)
+		names[#names + 1] = it.name
+		if n == o.wing then exact = it
+		elseif (n .. " "):sub(1, #words) == words then starts[#starts + 1] = it end
+	end
+	local pick = exact or (#starts == 1 and starts[1]) or nil
+	if pick == nil then
+		local why = #starts > 1 and ("which " .. o.wing .. "?") or ("no wing " .. o.wing)
+		self:endOrder(false, why .. " (wings: " .. table.concat(names, ", ") .. ")", true)
+	elseif not pick.active then
+		self:endOrder(false, pick.name .. " can't take that order", true)
+	else
+		pcall(function() pick.item:selectItem() end)
+		self:endOrder(true, o.shortcut .. " -> " .. pick.name, false)
+	end
+end
+
 function DroidLink:runCommand(seq, body)
 	if self:controlInfo() == nil then
 		self:ack(seq, "fail", "no Lua control info in this FSO build")
+		return
+	end
+	local shortcut, target = body:match("^order:([%w_]+):(.+)$")
+	if shortcut ~= nil then
+		self:startOrder(seq, shortcut, target)
 		return
 	end
 	local actions, missing, used = {}, {}, {}
@@ -150,11 +268,12 @@ end
 function DroidLink:commandsTick()
 	self.frame = self.frame + 1
 	self:pressControls()
+	self:orderTick()
 	if self.frame % 5 == 0 then self:readCommands(self.last_cmd < 0) end
 end
 
 function DroidLink:resetCommands()
-	self.queue, self.pressed, self.ci = {}, false, nil
+	self.queue, self.pressed, self.ci, self.order = {}, false, nil, nil
 	self.last_cmd = -1
 	local ci = self:controlInfo()
 	if ci ~= nil then pcall(function() ci.clearLuaButtonInfo() end) end

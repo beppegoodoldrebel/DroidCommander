@@ -17,13 +17,14 @@ from . import gamelink
 CMD_FILE = "droid_cmd.txt"
 ACK_FILE = "droid_ack.txt"
 ACK_TIMEOUT = 0.6        # seconds: the script reads commands about 12 times per second
+ORDER_TIMEOUT = 1.5      # wingman orders wait for the comm menu to open and change page
 
 
 def can_run(command):
     """Only commands made of game actions ("bind", optionally repeated) go through the game link.
 
-    Fixed keys, mouse buttons, pauses, held keys and the comm menu numbers of wingman
-    orders keep using the keyboard.
+    Fixed keys, mouse buttons, pauses and held keys keep using the keyboard. Wingman orders
+    have their own path (send_order).
     """
     actions = command.get("actions", [])
     return bool(actions) and all(set(a) <= {"bind", "repeat"} for a in actions)
@@ -50,18 +51,28 @@ class LuaControls:
 
     def send(self, command):
         """(True, detail) if the game pressed the controls, else (False, reason)."""
+        body = ",".join(f"{a['bind']}:{max(1, int(a.get('repeat', 1)))}" for a in command["actions"])
+        return self._roundtrip(body, ACK_TIMEOUT)
+
+    def send_order(self, shortcut, wing=None):
+        """A wingman order: the shortcut, then "All Fighters" or the wing picked by name in the comm menu."""
+        target = f"wing:{wing}" if wing else "all"
+        return self._roundtrip(f"order:{shortcut}:{target}", ORDER_TIMEOUT)
+
+    def _roundtrip(self, body, timeout):
+        """Write a command, wait for the game's answer. self.answered: the game did answer."""
+        self.answered = False
         folder = self._mission_dir()
         if folder is None:
             return False, "no mission running with the game link"
         seq = max(int(time.time() * 1000), self._last_seq + 1)
         self._last_seq = seq
-        body = ",".join(f"{a['bind']}:{max(1, int(a.get('repeat', 1)))}" for a in command["actions"])
         cmd_path, ack_path = os.path.join(folder, CMD_FILE), os.path.join(folder, ACK_FILE)
         try:
             self._write(cmd_path, f"{seq}|{body}\n")
         except OSError as e:
             return False, f"can't write {CMD_FILE}: {e}"
-        end = time.time() + ACK_TIMEOUT
+        end = time.time() + timeout
         while time.time() < end:
             time.sleep(0.02)
             try:
@@ -70,6 +81,7 @@ class LuaControls:
             except OSError:
                 continue
             if len(parts) == 3 and parts[0] == str(seq):
+                self.answered = True
                 return parts[1] == "ok", parts[2]
         try:                                       # too late: make sure it isn't run after the keys
             self._write(cmd_path, "")

@@ -198,16 +198,17 @@
   <p>In the game, wingman orders go through the comm menu <i>Give Command To</i>
     (1&nbsp;Ships · 2&nbsp;Wings · 3&nbsp;All Ships · 4&nbsp;Reinforcements). Droid Commander navigates it for you:</p>
   <table>
-    <tr><th style="width:42%">You say</th><th>The droid presses</th></tr>
-    <tr><td class="say">"Wingmen, cover me"</td><td>the <i>cover me</i> shortcut, then <span class="key">3</span> (All Ships)</td></tr>
-    <tr><td class="say">"Squad Alpha, cover me"</td><td>the shortcut, then <span class="key">2</span> (Wings), then Alpha's number in the list</td></tr>
+    <tr><th style="width:42%">You say</th><th>The droid picks</th></tr>
+    <tr><td class="say">"Wingmen, cover me"</td><td>the <i>cover me</i> order, then <b>All Fighters</b></td></tr>
+    <tr><td class="say">"Squad Alpha, cover me"</td><td>the order, then <b>Wings</b>, then <b>Alpha</b></td></tr>
     <tr><td class="say">"Alpha wing, cover me"</td><td>the same as "Squad Alpha"</td></tr>
   </table>
   <p>Available orders: <i>attack my target, disable my target, disarm my target, destroy subsystem,
     protect my target, ignore my target, form up, cover me, engage enemy, depart</i>.</p>
-  <p>The wing list is read from the game through the game link, in the same order the game uses
-    (the mission's starting wings first, then the others; only wings that still have a ship flying).
-    "Squad Gold" also finds a wing called "Gold Aurek" when it's the only Gold wing.</p>
+  <p>With the game link installed, the droid picks the wing in the comm menu <b>by its name</b>, so it
+    always reaches the right wing. "Squad Gold" also finds a wing called "Gold Aurek" when it's the only
+    Gold wing (say "Squad Gold Besh" when there are two). Without the game link it presses the menu
+    numbers on the keyboard instead.</p>
   <div class="note"><b>When the droid refuses</b>If the wing isn't in the mission, has no ships left, or
     the game link isn't installed, the droid gives the error beep and presses nothing — so a wrong
     order is never sent.</div>

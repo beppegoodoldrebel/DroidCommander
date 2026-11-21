@@ -109,9 +109,17 @@ with the order already chosen. So the droid also picks the recipient:
 - If the wing isn't in the mission, or the game link isn't installed, the droid answers with
   the error sound and presses nothing.
 
-Limits: when a wing refuses that particular order (some ship types do), the game leaves it out
-of the list, so the numbers after it shift and the order can reach the wrong wing. The rearm
-and capture shortcuts don't use this menu and are left as they are.
+**Through the game link** (the normal case when it is installed and a mission is running): the
+script presses the shortcut and then picks "All Fighters", or "Wings" and the wing **by its
+name**, with FSO's comm menu Lua functions (`hu.isCommMenuOpen()`, `mn.CommItems[i].Name` /
+`.Active` / `:selectItem()`). So a wing that refuses an order can't shift the others, and a
+refused order closes the menu again and gives the error sound with the reason ("no wing omega
+(wings: Alpha, Gold Aurek…)", "which gold?", "Red can't take that order").
+
+**With keys** (no game link): the numbers come from the wing list the script writes. Limit: when
+a wing refuses that particular order (some ship types do), the game leaves it out of the list,
+so the numbers after it shift and the order can reach the wrong wing. The rearm and capture
+shortcuts don't use this menu and are left as they are.
 
 ## Game events (the droid reacts to the game)
 
@@ -133,8 +141,11 @@ squealing when your hull is hit, alarm when the hull is low, and so on.
     only to a joystick work, and the game window doesn't need the focus. Droid Commander falls
     back to pressing keys when no mission is running, the script doesn't answer within 0.6 s,
     or it doesn't know the control. Commands with fixed keys, mouse buttons, pauses or held
-    keys, and wingman orders (comm menu numbers), always use the keyboard. Commands left in
-    the file from before a mission starts are never run.
+    keys always use the keyboard; wingman orders go through the comm menu functions (see
+    *Orders to wingmen*). Commands left in the file from before a mission starts are never run.
+    The Lua ADDITIVE button mode is on only while the script presses something: FSO copies
+    the player's own buttons into the Lua buttons every frame in that mode, so leaving it on
+    would make your own key presses repeat.
   - **Multiplayer:** it works there too, in fair-play mode: the droid only knows what your HUD shows:
     "are we clear?" counts only hostiles your radar can see (`checkVisibility`), not stealth
     ships or ships out of sensor range. Everything else it reports (hits, kills, hull,

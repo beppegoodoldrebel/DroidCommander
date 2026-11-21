@@ -14,7 +14,8 @@ from . import gamelink
 from .gamelink import GameLink, Reactions, answer, event_config, read_state
 from .phrases import PhraseBook, missing_words, normalize, to_json
 from .sounds import SoundBank, find_device
-from .squad import DEFAULT_WING_NAMES, WING_PREFIX, is_squad_order, recipient_actions, wing_label
+from .squad import (DEFAULT_WING_NAMES, SQUAD_SHORTCUTS, WING_PREFIX, is_squad_order,
+                    recipient_actions, wing_label)
 from .triggers import PushToTalk
 
 SAMPLE_RATE = 16000
@@ -211,15 +212,18 @@ class DroidApp:
                 self.answer_question(cmd, question)
                 continue
             try:
-                if is_squad_order(cmd):         # pick the recipient in the comm menu
-                    state = read_state(self.bindings.players_dir)
-                    try:
-                        extra = recipient_actions(group, state)
-                    except ValueError as e:
-                        raise CommandError(str(e))
-                    cmd = dict(cmd, actions=list(cmd.get("actions", [])) + extra)
-                self.executor.execute(cmd)
                 ex = self.executor
+                if is_squad_order(cmd) and self.squad_order_via_lua(cmd, group):
+                    pass                        # sent through the game's comm menu functions
+                else:
+                    if is_squad_order(cmd):     # pick the recipient in the comm menu with keys
+                        state = read_state(self.bindings.players_dir)
+                        try:
+                            extra = recipient_actions(group, state)
+                        except ValueError as e:
+                            raise CommandError(str(e))
+                        cmd = dict(cmd, actions=list(cmd.get("actions", [])) + extra)
+                    ex.execute(cmd)
                 if ex.last_route == "game link":
                     print(f"  via game link: {ex.last_note}")
                 elif ex.lua is not None and ex.last_note and self.verbose:
@@ -233,6 +237,23 @@ class DroidApp:
             except Exception as e:
                 self.emit("command", name=cmd["name"], ok=False, error=str(e))
                 self.say("error", f"  ! unexpected error: {e}")
+
+    def squad_order_via_lua(self, cmd, group):
+        """Send a wingman order through the game link. True if done; raises CommandError if the
+        game refused it (no such wing...); False to fall back to keys (no game link, no answer)."""
+        lua = self.executor.lua
+        if lua is None:
+            return False
+        shortcut = next(a["bind"] for a in cmd["actions"] if a.get("bind") in SQUAD_SHORTCUTS)
+        wing = group[len(WING_PREFIX):] if group and group.startswith(WING_PREFIX) else None
+        ok, note = lua.send_order(shortcut, wing)
+        self.executor.last_note = note
+        if ok:
+            self.executor.last_route = "game link"
+            return True
+        if lua.answered:                        # the game itself said no: keys wouldn't do better
+            raise CommandError(note)
+        return False
 
     def _reload_settings(self):
         """Pick up a new droid name / wake words / PTT name requirement from settings.json."""
