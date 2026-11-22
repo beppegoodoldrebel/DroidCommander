@@ -45,12 +45,30 @@ class EventsTab(ttk.Frame):
         ttk.Button(row, text="Choose folder…", command=self.choose_mod).pack(side="right", padx=6)
         row = ttk.Frame(box)
         row.pack(fill="x", pady=(6, 0))
+        gl = dict(hud.DISPLAY_DEFAULTS, **(s.get("game_link") or {}))
         self.hud_var = tk.BooleanVar(value=hud.enabled(s.get("game_link")))
         ttk.Checkbutton(row, text="Droid messages on the HUD", variable=self.hud_var,
                         command=self.save_hud_level).pack(side="left")
-        ttk.Label(row, style="Hint.TLabel", text="answers, problems and game events, written like a translation "
-                  "of the beeps in the droid's personality (Droid tab) — only on your screen"
-                  ).pack(side="left", padx=10)
+        self.where_var = tk.StringVar(value=hud.WHERE.get(gl["hud_where"], hud.WHERE["display"]))
+        self.pos_var = tk.StringVar(value=hud.POSITIONS.get(gl["hud_position"], hud.POSITIONS["left"]))
+        self.size_var = tk.StringVar(value=hud.SIZES.get(gl["hud_size"], hud.SIZES["small"]))
+        self.secs_var = tk.StringVar(value=str(gl["hud_seconds"]))
+        for label, var, values, width in (("on the", self.where_var, list(hud.WHERE.values()), 17),
+                                          ("at", self.pos_var, list(hud.POSITIONS.values()), 26),
+                                          ("text", self.size_var, list(hud.SIZES.values()), 7)):
+            ttk.Label(row, text=label).pack(side="left", padx=(10, 4))
+            cb = ttk.Combobox(row, textvariable=var, values=values, state="readonly", width=width)
+            cb.pack(side="left")
+            cb.bind("<<ComboboxSelected>>", lambda e: self.save_hud_level())
+        ttk.Label(row, text="for").pack(side="left", padx=(10, 4))
+        sp = ttk.Spinbox(row, from_=2, to=30, increment=1, textvariable=self.secs_var, width=4,
+                         command=self.save_hud_level)
+        sp.pack(side="left")
+        sp.bind("<FocusOut>", lambda e: self.save_hud_level())
+        ttk.Label(row, text="s").pack(side="left", padx=(4, 0))
+        ttk.Label(box, style="Hint.TLabel", text="Answers, problems and game events, like a translation of the "
+                  "beeps, in the droid's personality (Droid tab). Only on your screen. The droid display shows "
+                  "them at once, away from the reticle.").pack(anchor="w", pady=(4, 0))
         self.link_info = ttk.Label(box, text="", style="Hint.TLabel", wraplength=1000, justify="left")
         self.link_info.pack(fill="x", anchor="w", pady=(6, 0))
         self.link_info.bind("<Configure>", lambda e: self.link_info.configure(wraplength=max(300, e.width - 10)))
@@ -114,17 +132,32 @@ class EventsTab(ttk.Frame):
     def mod_dir(self):
         return gamelink.mod_dir(self.ed.players_dir, self.manual_mod)
 
+    def hud_settings(self):
+        key = lambda table, var, default: next((k for k, v in table.items() if v == var.get()), default)
+        try:
+            secs = max(2, min(30, int(self.secs_var.get())))
+        except ValueError:
+            secs = hud.DISPLAY_DEFAULTS["hud_seconds"]
+        return {"hud_messages": bool(self.hud_var.get()),
+                "hud_where": key(hud.WHERE, self.where_var, "display"),
+                "hud_position": key(hud.POSITIONS, self.pos_var, "left"),
+                "hud_size": key(hud.SIZES, self.size_var, "small"),
+                "hud_seconds": secs}
+
     def link_settings(self):
-        return {"enabled": bool(self.link_enabled.get()), "mod_dir": self.manual_mod,
-                "hud_messages": bool(self.hud_var.get())}
+        return {"enabled": bool(self.link_enabled.get()), "mod_dir": self.manual_mod, **self.hud_settings()}
 
     def save_hud_level(self):
         """Saved right away: a running Droid Commander uses it at once."""
         with open(self.ed.settings_path, "r", encoding="utf-8-sig") as f:
             gl = dict(json.load(f).get("game_link") or {})
-        gl["hud_messages"] = bool(self.hud_var.get())
+        new = self.hud_settings()
+        if all(gl.get(k) == v for k, v in new.items()):
+            return
+        gl.update(new)
         update_settings(self.ed.settings_path, {"game_link": gl})
-        self.ed.set_status("Droid messages on the HUD: " + ("on." if self.hud_var.get() else "off."))
+        self.ed.set_status("Droid messages on the HUD: " + (
+            f"on, {self.where_var.get().lower()}." if self.hud_var.get() else "off."))
 
     def save_mod_choice(self):
         with open(self.ed.settings_path, "r", encoding="utf-8-sig") as f:

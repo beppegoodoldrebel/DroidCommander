@@ -30,6 +30,29 @@ def enabled(game_link_settings):
     return v not in (False, "off", "false", 0, None)
 
 
+# Where the lines appear. "display": the droid's own small display drawn by the game link
+# (at once, away from the reticle, fading out); "messages": the game's message box (the mod's
+# own gauge: Fate of the Galaxy's is large, in the middle, and types the text slowly).
+WHERE = {"display": "Droid display", "messages": "Game message box"}
+POSITIONS = {"left": "Left, under the mission lists", "bottom_left": "Bottom left",
+             "bottom": "Bottom centre", "top_right": "Top right"}
+SIZES = {"small": "Small", "medium": "Medium", "large": "Large"}
+DISPLAY_DEFAULTS = {"hud_where": "display", "hud_position": "left", "hud_size": "small", "hud_seconds": 6}
+
+
+def display_settings(game_link_settings):
+    """None for the game's message box, else {"pos", "size", "secs"} for the droid display."""
+    gl = dict(DISPLAY_DEFAULTS, **{k: v for k, v in (game_link_settings or {}).items() if k in DISPLAY_DEFAULTS})
+    if gl["hud_where"] == "messages":
+        return None
+    try:
+        secs = max(2, min(30, int(gl["hud_seconds"])))
+    except (TypeError, ValueError):
+        secs = 6
+    return {"pos": gl["hud_position"] if gl["hud_position"] in POSITIONS else "left",
+            "size": gl["hud_size"] if gl["hud_size"] in SIZES else "small", "secs": secs}
+
+
 def load_personalities(path=USER_FILE):
     """{"captions": {...}, "personalities": {...}}: the user's file over the built-in one."""
     def read(p):

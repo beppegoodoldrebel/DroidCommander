@@ -12,6 +12,8 @@
 --
 -- Droid messages: "say:R2|Hull 72%, shields 45%" shows "R2: Hull 72%, shields 45%" among the
 -- HUD messages (only on your screen), like a translation of the droid's beeps.
+-- "show:pos=left;size=small;secs=6|R2|text" draws it instead on the droid's own small display
+-- (On HUD Draw), at once and away from the reticle; it fades out after a few seconds.
 --
 -- Multiplayer: it runs in fair-play mode, so the droid only knows what your HUD shows:
 -- "enemies left" counts only the hostile ships your radar can see (no stealth ships,
@@ -24,7 +26,9 @@
 DroidLink = {
 	-- raise it whenever this script changes: Droid Commander warns when the game still runs an
 	-- older copy (FSO loads scripts only when it starts)
-	version = 10,
+	version = 11,
+	display = {},                     -- droid display lines: {sender, text, born, until}
+	display_cfg = {pos = "left", size = "small", secs = 6},
 	file = "droid_link.log",
 	state_file = "droid_state.txt",   -- snapshot of your ship, rewritten every second
 	next_state = 0,
@@ -247,7 +251,73 @@ function DroidLink:orderTick()
 	end
 end
 
+-- ------------------------------------------------------------------ droid display
+-- positions as fractions of the screen: x, y of the first line, width of the text box
+local DISPLAY_POS = {
+	left        = {0.008, 0.42, 0.20},   -- under the mission lists on the left
+	bottom_left = {0.008, 0.64, 0.20},
+	bottom      = {0.36,  0.64, 0.28},
+	top_right   = {0.74,  0.04, 0.24},
+}
+local DISPLAY_FONT = {small = 1, medium = 2, large = 3}
+local MAX_DISPLAY_LINES = 3
+
+function DroidLink:show(seq, cfg, sender, text)
+	for k, v in cfg:gmatch("(%w+)=([%w_%.]+)") do
+		if k == "secs" then v = tonumber(v) or 6 end
+		self.display_cfg[k] = v
+	end
+	local now = 0
+	pcall(function() now = mn.getMissionTime() or 0 end)
+	local secs = tonumber(self.display_cfg.secs) or 6
+	self.display[#self.display + 1] = {sender = sender:sub(1, 24), text = text:sub(1, 200),
+	                                   born = now, until_t = now + secs}
+	while #self.display > MAX_DISPLAY_LINES do table.remove(self.display, 1) end
+	self:ack(seq, "ok", "shown")
+end
+
+-- every frame while the HUD is drawn: the droid's lines, newest last, fading out at the end
+function DroidLink:drawDisplay()
+	if #self.display == 0 then return end
+	local now = 0
+	pcall(function() now = mn.getMissionTime() or 0 end)
+	local keep = {}
+	for _, l in ipairs(self.display) do
+		if now < l.until_t and now >= l.born - 1 then keep[#keep + 1] = l end
+	end
+	self.display = keep
+	if #keep == 0 then return end
+	local cfg = self.display_cfg
+	local p = DISPLAY_POS[cfg.pos] or DISPLAY_POS.left
+	local w, h = gr.getScreenWidth(), gr.getScreenHeight()
+	if w <= 0 or h <= 0 then return end
+	local old_font = gr.CurrentFont
+	local want = DISPLAY_FONT[cfg.size] or 1
+	if #gr.Fonts > 0 then gr.CurrentFont = gr.Fonts[math.min(want, #gr.Fonts)] end
+	local x = math.floor(w * p[1])
+	local y = math.floor(h * p[2])
+	local x2 = math.floor(w * (p[1] + p[3]))
+	local line_h = math.max(8, gr.getStringHeight("Ag"))
+	for _, l in ipairs(keep) do
+		local left = l.until_t - now
+		local alpha = math.floor(255 * math.max(0, math.min(1, left)))   -- fade in the last second
+		local name = l.sender .. ": "
+		gr.setColor(255, 180, 58, alpha)                                  -- droid name: amber
+		gr.drawString(name, x, y)
+		local nx = x + gr.getStringWidth(name)
+		gr.setColor(140, 215, 255, alpha)                                 -- text: hologram blue
+		local n = gr.drawString(l.text, nx, y, math.max(nx + 50, x2), y + line_h * 4)
+		y = y + line_h * math.max(1, n or 1) + math.floor(line_h / 3)
+	end
+	if old_font ~= nil then gr.CurrentFont = old_font end
+end
+
 function DroidLink:runCommand(seq, body)
+	local cfg, dsender, dtext = body:match("^show:([^|]*)|([^|]*)|(.*)$")
+	if cfg ~= nil then
+		self:show(seq, cfg, dsender, dtext)
+		return
+	end
 	local sender, text = body:match("^say:([^|]*)|(.*)$")
 	if sender ~= nil then
 		self:say(seq, sender, text)
@@ -346,7 +416,7 @@ function DroidLink:commandsTick()
 end
 
 function DroidLink:resetCommands()
-	self.queue, self.pressed, self.ci, self.order = {}, false, nil, nil
+	self.queue, self.pressed, self.ci, self.order, self.display = {}, false, nil, nil, {}
 	self.last_cmd = -1
 	local ci = self:controlInfo()
 	if ci ~= nil then pcall(function() ci.clearLuaButtonInfo() end) end
@@ -617,6 +687,7 @@ if not IS_STANDALONE then
 	engine.addHook("On Ship Death", safe(DroidLink.onShipDeath), {State="GS_STATE_GAME_PLAY"})
 	engine.addHook("On Pain Flash", safe(DroidLink.onPainFlash), {State="GS_STATE_GAME_PLAY"})
 	engine.addHook("On Simulation", safe(DroidLink.onSimulation))
+	engine.addHook("On HUD Draw", safe(DroidLink.drawDisplay))
 	engine.addHook("On Ship Collision", safe(DroidLink.onCollision), {State="GS_STATE_GAME_PLAY"})
 	engine.addHook("On Subsystem Destroyed", safe(DroidLink.onSubsystemDestroyed), {State="GS_STATE_GAME_PLAY"})
 end

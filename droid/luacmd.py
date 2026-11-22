@@ -79,15 +79,24 @@ class LuaControls:
         split = lambda s: {n for n in s.split(",") if n}
         return split(parts.get("known", "")), split(parts.get("unknown", ""))
 
-    def say(self, sender, text):
-        """Show "<sender>: <text>" among the game's HUD messages. Doesn't wait; False if not flying."""
+    def say(self, sender, text, display=None):
+        """Show "<sender>: <text>" in game. Doesn't wait; False if not flying.
+
+        display: None -> among the game's HUD messages; a dict (pos, size, secs) -> on the
+        droid's own small display, drawn by the script.
+        """
         text = " ".join(str(text).split())[:200]
         sender = " ".join(str(sender).replace("|", "/").split())[:24] or "R2"
         folder = self._mission_dir()
         if folder is None or not text:
             return False
+        if display:
+            cfg = ";".join(f"{k}={str(v).replace(';', '').replace('|', '')}" for k, v in display.items())
+            body = f"show:{cfg}|{sender}|{text}"
+        else:
+            body = f"say:{sender}|{text}"
         try:
-            self._post(folder, f"say:{sender}|{text}")
+            self._post(folder, body)
         except OSError:
             return False
         return True

@@ -172,7 +172,7 @@ class DroidApp:
         """Write "<droid>: <text>" among the game's HUD messages (if switched on in the Events tab)."""
         if self.hud_on and text:
             try:
-                self.executor.lua.say(self.name, text)
+                self.executor.lua.say(self.name, text, hud.display_settings(self.s.get("game_link")))
             except Exception as e:                       # a message must never break a command
                 print(f"  (HUD message not shown: {e})")
 
@@ -276,6 +276,7 @@ class DroidApp:
         if on != self.hud_on:                                     # HUD messages switched (Events tab)
             self.hud_on = on
             print(f"Droid messages on the HUD: {'on' if on else 'off'}")
+        self.s["game_link"] = new.get("game_link") or {}         # where/how the droid's lines appear
         if new.get("events") != self.s.get("events"):            # event reactions edited
             self.s["events"] = new.get("events")
             self.reactions.config = event_config(self.s)

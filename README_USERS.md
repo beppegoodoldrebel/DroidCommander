@@ -58,7 +58,9 @@ Start every command with the droid's name, then the order:
 **The droid writes, too:** its answers, problems and reactions appear among the game's HUD
 messages, like a translation of its beeps — "R2: [excited whistle] Got him! Great shot, Boss!".
 Give it a **personality** in the Droid tab (*Loyal rebel*, *Cheerful*, *Grumpy*, *Nervous*, *By the
-book*) and tell it how to call you. Switch the messages on or off in the Events tab.
+book*) and tell it how to call you. In the Events tab you switch the messages on or off and
+choose where they appear: on the droid's own small display (left of the screen by default, away
+from the reticle; size and duration adjustable) or in the game's message box.
 
 The full list of commands is in the **Commands** tab: every one can be changed, disabled,
 or created from scratch (**Import from game…** adds commands for any game control).

@@ -142,10 +142,18 @@ squealing when your hull is hit, alarm when the hull is low, and so on.
   - **Droid messages on the HUD** (`droid/hud.py`, switch in the Events tab): like a translation
     of the beeps, the droid writes its **answers**, **problems** (why an order couldn't be done)
     and the **game events** it reacts to among the game's HUD messages, e.g.
-    "R2: [excited whistle] Got him! Great shot, Boss!" (`say:R2|text` → `mn.addMessage` +
-    `mn.sendMessage("R2", msg, 0, MESSAGE_PRIORITY_LOW)`, so it never cuts the wingmen's radio; in
-    multiplayer `mn.sendPlainMessage`, only on your screen). It doesn't comment on every command
-    nor on what it didn't understand (that's in the app's log), to keep the immersion.
+    "R2: [excited whistle] Got him! Great shot, Boss!". Only on your screen. It doesn't comment
+    on every command nor on what it didn't understand (that's in the app's log), to keep the
+    immersion. Where the lines appear:
+    - **Droid display** (default): the script draws them itself in the `On HUD Draw` hook
+      (`show:pos=left;size=small;secs=6|R2|text`; `gr.drawString` with wrapping, `gr.setColor`
+      with a fade-out, `gr.Fonts[1..3]` for small/medium/large). At once, at most 3 lines, the
+      droid's name in amber and the text in hologram blue. Positions: left under the mission
+      lists (default), bottom left, bottom centre, top right; duration 2-30 s.
+    - **Game message box**: the mod's own gauge (`say:R2|text` → `mn.addMessage` +
+      `mn.sendMessage("R2", msg, 0, MESSAGE_PRIORITY_LOW)`, so it never cuts the wingmen's radio;
+      `mn.sendPlainMessage` in multiplayer). Fate of the Galaxy's is large, in the middle of the
+      screen, and types the text a little at a time.
 
 ### Droid personality
 
