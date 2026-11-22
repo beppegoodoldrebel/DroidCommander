@@ -55,9 +55,10 @@ Start every command with the droid's name, then the order:
 | "Wingmen, attack my target" | order to **all** your wingmen |
 | "Squad Alpha, cover me" | order to **Alpha wing** only |
 
-**The droid writes, too:** its answers appear among the game's HUD messages, like a translation
-of its beeps — "R2: Hull 72%, shields 45%", "R2: Toggle S-foils: done.", or what it heard when it
-didn't understand you. Choose how much it says in the Events tab (*Droid messages on the HUD*).
+**The droid writes, too:** its answers, problems and reactions appear among the game's HUD
+messages, like a translation of its beeps — "R2: [excited whistle] Got him! Great shot, Boss!".
+Give it a **personality** in the Droid tab (*Loyal rebel*, *Cheerful*, *Grumpy*, *Nervous*, *By the
+book*) and tell it how to call you. Switch the messages on or off in the Events tab.
 
 The full list of commands is in the **Commands** tab: every one can be changed, disabled,
 or created from scratch (**Import from game…** adds commands for any game control).
@@ -68,7 +69,8 @@ gamepad button. Pick one that is not used in the game.
 
 ## The tabs in short
 
-- **Droid** — the droid's name (wake word), other callsigns (Wingmen) and wing names.
+- **Droid** — the droid's name (wake word), its personality, other callsigns (Wingmen) and
+  wing names.
 - **Commands** — what you can say and which game control each command works; **Test all in
   game…** tries them all at once.
 - **Voice** — how the droid sounds: R2-D2, R5, Chopper, BB-8 or Songbird style, your own

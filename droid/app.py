@@ -45,7 +45,7 @@ class DroidApp:
         self.players_dir = gamelink.game_players_dir(settings)     # FSO's user folder (events, state)
         from .luacmd import LuaControls                            # controls are pressed inside the game
         self.executor = Executor(LuaControls(lambda: self.players_dir))
-        self.hud_level = gl.get("hud_messages", hud.DEFAULT_LEVEL)      # droid lines on the game's HUD
+        self.hud_on = hud.enabled(gl)                  # the droid writes its answers on the game's HUD
         snd = settings.get("sound", {})
         self.sounds = SoundBank(snd.get("folder", "sounds"), snd.get("volume", 0.8),
                                 snd.get("output_device"), snd.get("backend", "winsound"),
@@ -150,13 +150,10 @@ class DroidApp:
         if cmd is None:
             self.emit("unknown", text=text)
             self.say("unknown", f"{tag} -> not understood")
-            if rest:
-                self.hud_say(f"Sorry, I didn't get that: \"{rest}\"", "commands")
             return
         if conf < self.min_conf:
             self.emit("unknown", text=text, reason="low confidence")
             self.say("unknown", f"{tag} -> confidence too low for '{cmd['name']}'")
-            self.hud_say(f"Not sure I heard right: \"{rest}\"", "commands")
             return
         print(f"{tag} -> {cmd['name']}" + (f" (to {wing_label(group)})" if group and group.startswith(WING_PREFIX) else ""))
         self.jobs.put((cmd, group))
@@ -167,11 +164,15 @@ class DroidApp:
         self.reactions.command_answered()
         self.sounds.play(mood)
 
-    def hud_say(self, text, kind):
-        """Write "<droid>: <text>" among the game's HUD messages, if the chosen level includes `kind`."""
-        if hud.allowed(self.hud_level, kind):
+    def writer(self):
+        """The droid's personality (Droid tab), read again each time: edits apply at once."""
+        return hud.Writer(self.s.get("droid"))
+
+    def hud_say(self, text):
+        """Write "<droid>: <text>" among the game's HUD messages (if switched on in the Events tab)."""
+        if self.hud_on and text:
             try:
-                self.executor.lua.say(self.name, hud.sentence(text))
+                self.executor.lua.say(self.name, text)
             except Exception as e:                       # a message must never break a command
                 print(f"  (HUD message not shown: {e})")
 
@@ -185,9 +186,7 @@ class DroidApp:
         response = self.reactions.pick(event)
         if response:
             self.sounds.play(response)
-            line = hud.event_text(event, detail)
-            if line:
-                self.hud_say(line, "everything")
+            self.hud_say(hud.event_line(self.writer(), event, detail, response))
         self.emit("game", event=event, detail=detail, response=response)
         if self.verbose or response:
             print(f"[game] {event} {detail}" + (f" -> {response}" if response else ""))
@@ -200,7 +199,7 @@ class DroidApp:
         print(f"  ? {cmd['name']}: {response} ({why})")
         self.emit("answer", name=cmd["name"], question=question, response=response, why=why)
         if state:                                       # flying: translate the beeps
-            self.hud_say(why, "answers")
+            self.hud_say(hud.answer_line(self.writer(), question, response, state, why))
 
     def on_link_status(self, state, path):
         self.emit("link", state=state, path=path)
@@ -235,14 +234,10 @@ class DroidApp:
                 self.emit("command", name=cmd["name"], ok=True, note=ex.last_note)
                 self.reactions.command_answered()
                 self.sounds.play(cmd.get("sound", "ack"))
-                if is_squad_order(cmd):         # "COVER_MESSAGE -> Alpha"
-                    self.hud_say(f"{cmd['name']} -> {ex.last_note.split('->')[-1].strip()}", "commands")
-                else:
-                    self.hud_say(f"{cmd['name']}: done.", "commands")
             except CommandError as e:
                 self.emit("command", name=cmd["name"], ok=False, error=str(e))
                 self.say("error", f"  ! {cmd['name']}: {e}")
-                self.hud_say(f"Can't do \"{cmd['name']}\": {e}", "answers")
+                self.hud_say(hud.problem_line(self.writer(), e))
             except Exception as e:
                 self.emit("command", name=cmd["name"], ok=False, error=str(e))
                 self.say("error", f"  ! unexpected error: {e}")
@@ -277,10 +272,10 @@ class DroidApp:
             gamelink.MANUAL_MOD_DIR = self.s["game_link"].get("mod_dir") or None
             self.players_dir = gamelink.game_players_dir(self.s)
             print(f"Game folder: {self.players_dir or 'not found'}")
-        level = (new.get("game_link") or {}).get("hud_messages", hud.DEFAULT_LEVEL)
-        if level != self.hud_level:                               # HUD messages level (Events tab)
-            self.hud_level = level
-            print(f"HUD messages: {hud.LEVEL_LABELS.get(level, level)}")
+        on = hud.enabled(new.get("game_link"))
+        if on != self.hud_on:                                     # HUD messages switched (Events tab)
+            self.hud_on = on
+            print(f"Droid messages on the HUD: {'on' if on else 'off'}")
         if new.get("events") != self.s.get("events"):            # event reactions edited
             self.s["events"] = new.get("events")
             self.reactions.config = event_config(self.s)

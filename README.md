@@ -139,13 +139,27 @@ squealing when your hull is hit, alarm when the hull is low, and so on.
     its version in `droid_state.txt`, so the app warns when the game still runs an older copy
     (FSO loads scripts only at startup). The command file keeps the last 8 commands and the
     answer file the last 8 answers, so commands sent in a quick row are never lost.
-  - **Droid messages on the HUD** (`droid/hud.py`, Events tab): like a translation of the beeps,
-    the droid writes lines such as "R2: Hull 72%, shields 45%" among the game's HUD messages
-    (`say:R2|text` → `mn.addMessage` + `mn.sendMessage("R2", msg, 0, MESSAGE_PRIORITY_LOW)`, so it
-    never cuts the wingmen's radio; in multiplayer `mn.sendPlainMessage`, only on your screen).
-    Levels: *Off*; *Answers and problems* (answers to questions, why a command failed); *Also
-    every command* (default: "Toggle S-foils: done.", "Cover me -> Alpha", what it heard when it
-    didn't understand); *Also game events* (hull low, subsystem lost, kills, when the droid reacts).
+  - **Droid messages on the HUD** (`droid/hud.py`, switch in the Events tab): like a translation
+    of the beeps, the droid writes its **answers**, **problems** (why an order couldn't be done)
+    and the **game events** it reacts to among the game's HUD messages, e.g.
+    "R2: [excited whistle] Got him! Great shot, Boss!" (`say:R2|text` → `mn.addMessage` +
+    `mn.sendMessage("R2", msg, 0, MESSAGE_PRIORITY_LOW)`, so it never cuts the wingmen's radio; in
+    multiplayer `mn.sendPlainMessage`, only on your screen). It doesn't comment on every command
+    nor on what it didn't understand (that's in the app's log), to keep the immersion.
+
+### Droid personality
+
+Droid tab → **Personality**: how the droid writes on the HUD — *Loyal rebel* (default),
+*Cheerful*, *Grumpy*, *Nervous* or *By the book* — independent of its voice. **Calls you**: how it
+calls you now and then ("Boss", "Commander"…); **Beep captions**: a subtitle of the sound it
+plays before the line ("[excited whistle]"). **Example** shows sample lines.
+
+The lines are in `config/personalities.json` (copied from `defaults/config/` at first start; the
+built-in file fills whatever is missing): per personality a `label`, optional `captions` by
+sound mood, and `lines` per situation (`answer.<question>.<response>`, `answer.generic`,
+`problem`, `event.<event>`), one picked at random. Placeholders: `{hull}` `{shields}` `{energy}`
+`{hostiles}` `{target}` `{pct}` `{subsystem}` `{reason}` `{why}` `{you}` (lines with `{you}` are
+used only when "Calls you" is set). Add a personality by copying a block with a new key.
     **Commands → ▶ Test all in game…** (droid/test_all.py) tries every command at once during
     a mission: *Check names* sends `check:NAME,…` and the script answers which controls the
     game knows (nothing pressed); *Press all* presses each command one every 2 s (wingman

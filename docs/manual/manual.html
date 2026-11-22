@@ -215,7 +215,8 @@
 
   <h2>6 · Asking the droid questions</h2>
   <p>With the game link installed, the droid can check your ship and answer with a happy (yes / all good)
-    or worried (no / bad news) beep — and writes the answer among the HUD messages ("R2: 3 hostile ships left"):</p>
+    or worried (no / bad news) beep — and writes the answer among the HUD messages, in its personality
+    ("R2: [descending beeps] Not yet: 3 hostiles out there."):</p>
   <table>
     <tr><th style="width:42%">Ask</th><th>The droid checks</th></tr>
     <tr><td class="say">"R2, are you OK?"</td><td>hull and shields — a panicky answer if the hull is critical</td></tr>
@@ -232,10 +233,15 @@
 <section class="chapter">
   <div class="eyebrow">The editor</div>
   <h2>7 · The Droid tab</h2>
-  <figure><img src="img/tab_droid.png" alt="Droid tab"><figcaption>The Droid tab: name, recognized forms, callsigns and wing names.</figcaption></figure>
+  <figure><img src="img/tab_droid.png" alt="Droid tab"><figcaption>The Droid tab: name, personality, recognized forms, callsigns and wing names.</figcaption></figure>
   <ul>
     <li><b>Droid name</b> — what you call your droid: "R2", "Chopper", "BB-8"… Commands only run when they
       start with it.</li>
+    <li><b>Personality</b> — how the droid writes on the HUD: <i>Loyal rebel</i>, <i>Cheerful</i>, <i>Grumpy</i>,
+      <i>Nervous</i> or <i>By the book</i>, whatever its voice. <b>Calls you</b> — how it calls you now and then
+      ("Boss"). <b>Beep captions</b> — a subtitle of its beeps before each line ("[excited whistle] Got him!").
+      <b>Example</b> shows a few lines. You can edit them, or add your own personality, in
+      <code>config/personalities.json</code>.</li>
     <li><b>Recognized as</b> — the speech model often hears letters as words ("R" as "are"), so the name is
       accepted in several forms. They are rebuilt automatically when you rename the droid; you can also
       edit them. Words the speech model doesn't know are flagged in orange.</li>
@@ -300,8 +306,8 @@
     <li><b>Mod folder</b> — found automatically (for FotG 2, its <code>FG_Core</code> package). If it isn't found,
       press <b>Choose folder…</b> and pick the mod folder, e.g.
       <code>…\Library\FotG_2\FotG_2-2.0.2</code>. <b>Automatic</b> goes back to automatic detection.</li>
-    <li><b>Droid messages on the HUD</b> — the droid also writes its answers, like a translation of its beeps
-      ("R2: Hull 72%, shields 45%"). Choose how much it says; only you see them.</li>
+    <li><b>Droid messages on the HUD</b> — the droid also writes its answers, problems and reactions, like a
+      translation of its beeps, in its personality (Droid tab). Only you see them.</li>
     <li><b>React to game events</b> switches all reactions on or off; <b>Remove</b> takes the script out of the mod.</li>
   </ul>
   <h3>Reactions</h3>

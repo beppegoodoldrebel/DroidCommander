@@ -50,7 +50,7 @@ def ensure_user_data():
     os.makedirs(os.path.join(DATA_DIR, "config"), exist_ok=True)
     os.makedirs(os.path.join(DATA_DIR, "sounds", "voices"), exist_ok=True)
     defaults = resource("defaults", "config")
-    for name in ("settings.json", "commands.json", "voices.json"):
+    for name in ("settings.json", "commands.json", "voices.json", "personalities.json"):
         dest = os.path.join(DATA_DIR, "config", name)
         if not os.path.exists(dest) and os.path.exists(os.path.join(defaults, name)):
             shutil.copy2(os.path.join(defaults, name), dest)

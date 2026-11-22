@@ -8,7 +8,7 @@ import threading
 import tkinter as tk
 from tkinter import messagebox, ttk
 
-from . import theme
+from . import hud, theme
 from .phrases import missing_words, normalize
 from .settings_io import update_settings
 from .squad import DEFAULT_WING_NAMES
@@ -61,27 +61,12 @@ def parse_callsigns(text):
     return out
 
 
-def save_droid_settings(path, name, wake_words):
-    """Update only the droid name and wake words, keeping the file's layout."""
+def save_droid_settings(path, name, wake_words, **extra):
+    """Update the droid block (name, wake words, personality…), keeping the rest of the file."""
     with open(path, "r", encoding="utf-8-sig") as f:
-        text = f.read()
-    block = ('"droid": {\n        "name": ' + json.dumps(name, ensure_ascii=False)
-             + ',\n        "wake_words": ' + json.dumps(wake_words, ensure_ascii=False) + "\n    }")
-    new = re.sub(r'"droid"\s*:\s*\{[^{}]*\}', lambda m: block, text, count=1)
-    try:
-        data = json.loads(new)
-        ok = data["droid"]["name"] == name and data["droid"]["wake_words"] == wake_words
-    except (ValueError, KeyError):
-        ok = False
-    if not ok:                                  # unusual layout: rewrite the whole file
-        data = json.loads(text)
-        data["droid"]["name"] = name
-        data["droid"]["wake_words"] = wake_words
-        new = json.dumps(data, indent=4, ensure_ascii=False) + "\n"
-    tmp = path + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        f.write(new)
-    os.replace(tmp, path)
+        droid = dict(json.load(f).get("droid") or {})
+    droid.update(name=name, wake_words=wake_words, **extra)
+    update_settings(path, {"droid": droid})
 
 
 class DroidTab(ttk.Frame):
@@ -101,16 +86,51 @@ class DroidTab(ttk.Frame):
         self._vocab_running = False
         self.auto = True      # renaming rebuilds the variants (until you edit them by hand)
 
-        box = ttk.LabelFrame(self, text="Droid name", padding=(10, 6))
+        box = ttk.LabelFrame(self, text="Droid name and personality", padding=(10, 6))
         box.pack(fill="x")
+        left = ttk.Frame(box)
+        left.pack(side="left", fill="y", anchor="n")
         self.name_var = tk.StringVar(value=droid.get("name", "R2"))
         self.name_var.trace_add("write", lambda *_: self.on_name())
-        entry = ttk.Entry(box, textvariable=self.name_var, font=theme.C["F"]["big"], width=18)
+        entry = ttk.Entry(left, textvariable=self.name_var, font=theme.C["F"]["big"], width=18)
         entry.pack(anchor="w")
-        ttk.Label(box, style="Hint.TLabel", wraplength=700, justify="left",
+        ttk.Label(left, style="Hint.TLabel", wraplength=330, justify="left",
                   text="Voice commands only run when they start with this name, "
                        "e.g. “Chopper, open S-foils”. Write it the way you say it: "
                        "“R2”, “BB-8”, “Chopper”.").pack(anchor="w", pady=(6, 0))
+
+        # personality: how the droid writes its answers on the HUD (independent of its voice)
+        right = ttk.Frame(box)
+        right.pack(side="left", fill="both", expand=True, padx=(24, 0), anchor="n")
+        self.personalities = hud.load_personalities()
+        self.pers_keys = hud.personality_labels(self.personalities)
+        row = ttk.Frame(right)
+        row.pack(fill="x")
+        ttk.Label(row, text="Personality:").pack(side="left")
+        current = droid.get("personality") or hud.DEFAULT_PERSONALITY
+        self.pers_var = tk.StringVar(value=next((l for k, l in self.pers_keys if k == current),
+                                                self.pers_keys[0][1] if self.pers_keys else ""))
+        cb = ttk.Combobox(row, textvariable=self.pers_var, state="readonly", width=16,
+                          values=[l for _, l in self.pers_keys])
+        cb.pack(side="left", padx=6)
+        cb.bind("<<ComboboxSelected>>", lambda e: (self.mark_dirty(), self.show_example()))
+        ttk.Label(row, text="Calls you:").pack(side="left", padx=(12, 0))
+        self.you_var = tk.StringVar(value=droid.get("call_player") or "")
+        self.you_var.trace_add("write", lambda *_: (None if self._loading else (self.mark_dirty(),
+                                                                              self.show_example())))
+        ttk.Entry(row, textvariable=self.you_var, width=14).pack(side="left", padx=6)
+        self.captions_var = tk.BooleanVar(value=droid.get("beep_captions", True))
+        ttk.Checkbutton(row, text="Beep captions", variable=self.captions_var,
+                        command=lambda: (self.mark_dirty(), self.show_example())).pack(side="left", padx=(8, 0))
+        row = ttk.Frame(right)
+        row.pack(fill="x", pady=(6, 0))
+        ttk.Button(row, text="Example", command=self.show_example).pack(side="left")
+        self.example = ttk.Label(row, text="", wraplength=470, justify="left", foreground=theme.C["cyan"])
+        self.example.pack(side="left", padx=8)
+        ttk.Label(right, style="Hint.TLabel", wraplength=780, justify="left",
+                  text="How the droid writes on the HUD (Events tab). “Calls you”: e.g. Boss, Commander. "
+                       "Lines: config/personalities.json — edit them or add your own personality."
+                  ).pack(anchor="w", pady=(4, 0))
 
         box = ttk.LabelFrame(self, text="Recognized as — one per line", padding=10)
         box.pack(fill="x", pady=(6, 0))
@@ -125,7 +145,7 @@ class DroidTab(ttk.Frame):
         side = ttk.Frame(row)
         side.pack(side="left", fill="y", padx=12)
         ttk.Button(side, text="Rebuild from name", command=self.rebuild).pack(anchor="w")
-        ttk.Label(side, style="Hint.TLabel", wraplength=380, justify="left",
+        ttk.Label(side, style="Hint.TLabel", wraplength=640, justify="left",
                   text="The speech model often hears letters as words (“R” as “are”), so the "
                        "name is accepted in each of these forms. They are rebuilt automatically "
                        "when you change the name, unless you edit them by hand.").pack(anchor="w", pady=(8, 0))
@@ -171,6 +191,23 @@ class DroidTab(ttk.Frame):
         ttk.Button(bottom, text="Save", style="Accent.TButton", command=self.save).pack(side="right")
         self._loading = False
         self.schedule_vocab()
+        self.show_example()
+
+    # -------------------------------------------------------- personality
+    def personality_settings(self):
+        key = next((k for k, l in self.pers_keys if l == self.pers_var.get()), hud.DEFAULT_PERSONALITY)
+        return {"personality": key, "call_player": " ".join(self.you_var.get().split()),
+                "beep_captions": bool(self.captions_var.get())}
+
+    def show_example(self):
+        """Three sample HUD lines in the chosen personality."""
+        w = hud.Writer(self.personality_settings(), self.personalities)
+        name = self.name_var.get().strip() or "R2"
+        state = {"hull": 72, "shields": 45, "hostiles": 3}
+        lines = [hud.answer_line(w, "status", "positive", state, ""),
+                 hud.event_line(w, "kill", "", "victory"),
+                 hud.event_line(w, "hull_critical", "18", "panic")]
+        self.example.configure(text="\n".join(f"{name}: {l}" for l in lines if l))
 
     # -------------------------------------------------------------- state
     def get_variants(self):
@@ -294,7 +331,7 @@ class DroidTab(ttk.Frame):
             messagebox.showerror("Droid name", "Enter a name and at least one way it is recognized.",
                                  parent=self)
             return False
-        save_droid_settings(self.path, name, variants)
+        save_droid_settings(self.path, name, variants, **self.personality_settings())
         callsigns = parse_callsigns(self.calls.get("1.0", "end"))
         wing_names = self.get_wing_names()
         update_settings(self.path, {"callsigns": callsigns, "wing_names": wing_names})
