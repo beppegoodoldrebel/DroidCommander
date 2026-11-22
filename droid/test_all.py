@@ -18,7 +18,8 @@ from .squad import SQUAD_SHORTCUTS, is_squad_order
 COUNTDOWN = 5          # seconds to switch to the game window (FSO pauses when it loses focus)
 GAP = 2.0              # seconds between two commands in "Press all"
 # never pressed by "Press all": they end the test (jump out of the mission, wingmen leave)
-NOT_IN_PRESS_ALL = {"END_MISSION": "would end the mission", "WARP_MESSAGE": "wingmen would leave"}
+NOT_IN_PRESS_ALL = {"END_MISSION": "would end the mission", "WARP_MESSAGE": "wingmen would leave",
+                    "TOGGLE_GLIDING": "pauses the game in Fate of the Galaxy"}
 
 
 def kind_of(cmd):
@@ -55,8 +56,8 @@ class TestAllDialog(tk.Toplevel):
             "FreeSpace Open pauses when it isn't in front.\n"
             "• Check names — asks the game which controls it knows. Presses nothing.\n"
             "• Press all — presses each command through the game link, one every 2 seconds: watch "
-            "the game and the Result column. Commands that would end the test (jump to hyperspace, "
-            "wingmen depart) are skipped.")).pack(anchor="w")
+            "the game and the Result column. Commands that would end or pause the test (jump to "
+            "hyperspace, wingmen depart, glide = pause in FotG) are skipped.")).pack(anchor="w")
         row = ttk.Frame(top)
         row.pack(fill="x", pady=(8, 0))
         self.check_btn = ttk.Button(row, text="Check names", command=lambda: self.start("check"))
@@ -180,9 +181,9 @@ class TestAllDialog(tk.Toplevel):
             else:
                 bad += 1
                 put(("row", i, f"✗ {note}", "bad"))
-                if not self.lua.answered and "no mission" in note:
-                    put(("done", "⚠ No mission running with the game link (or the game is paused). "
-                                 "Start a mission, then try again.")); return
+                if not self.lua.answered and ("no mission" in note or "didn't answer" in note):
+                    put(("done", f"⚠ Stopped at “{cmd['name']}”: the game stopped answering — paused, "
+                                 "mission over or not in front? Resume the mission and press again.")); return
             for _ in range(int(GAP * 10)):
                 if self.stop_flag.is_set():
                     break

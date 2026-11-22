@@ -44,10 +44,19 @@ class LuaControls:
         return os.path.dirname(events) if events else None
 
     def _write(self, path, text):
+        """Replace the file in one go. Windows refuses while the game is reading it
+        ("Access is denied"): the game reads it in a moment, so try again for a while."""
         tmp = path + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
             f.write(text)
-        os.replace(tmp, path)
+        for attempt in range(25):
+            try:
+                os.replace(tmp, path)
+                return
+            except PermissionError:
+                if attempt == 24:
+                    raise
+                time.sleep(0.01)
 
     def send(self, command):
         """(True, detail) if the game pressed the controls, else (False, reason)."""

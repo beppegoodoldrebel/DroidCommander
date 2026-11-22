@@ -54,14 +54,25 @@ function DroidLink:ack(seq, status, detail)
 	end)
 end
 
--- the game's number for a control name such as "MAX_THROTTLE", or nil.
+-- Controls missing from the name table FSO gives Lua (control_info.cpp plr_commands), with
+-- their fixed numbers (IoActionId in controlsconfig.h). Fate of the Galaxy uses the custom
+-- controls for S-foils, targeting computer...; pressed by number, FSO handles them like the key.
+local EXTRA_CONTROLS = {
+	CYCLE_PRIMARY_WEAPON_SEQUENCE = 118,
+	CUSTOM_CONTROL_1 = 119, CUSTOM_CONTROL_2 = 120, CUSTOM_CONTROL_3 = 121,
+	CUSTOM_CONTROL_4 = 122, CUSTOM_CONTROL_5 = 123,
+}
+
+-- the game's number for a control name such as "MAX_THROTTLE" and whether FSO knows the name
+-- (true: press it by name; false: by number), or nil.
 -- Note: control_info's button functions take no 'self' (call them with '.', not ':'),
 -- and FSO shows an error dialog for a wrong argument even inside pcall.
 function DroidLink:controlNumber(name)
 	local ci = self:controlInfo()
 	if ci == nil then return nil end
 	local ok, n = pcall(function() return ci.getButtonControlNumber(name) end)
-	if ok and type(n) == "number" and n >= 0 then return n end
+	if ok and type(n) == "number" and n >= 0 then return n, true end
+	if EXTRA_CONTROLS[name] ~= nil then return EXTRA_CONTROLS[name], false end
 	return nil
 end
 
@@ -124,20 +135,21 @@ function DroidLink:startOrder(seq, shortcut, target)
 		self:ack(seq, "fail", "busy with another order")
 		return
 	end
-	if self:controlNumber(shortcut) == nil then
+	local n, byname = self:controlNumber(shortcut)
+	if n == nil then
 		self:ack(seq, "fail", "unknown control " .. shortcut)
 		return
 	end
 	local wing = target:match("^wing:(.+)$")
 	self.order = {seq = seq, shortcut = shortcut, wing = wing and norm(wing), stage = "type", frames = 0}
-	self.queue[#self.queue + 1] = {name = shortcut, count = 1}
+	self.queue[#self.queue + 1] = {num = n, byname = byname, name = shortcut, count = 1}
 end
 
 function DroidLink:endOrder(ok, detail, close_menu)
 	local o = self.order
 	self.order = nil
 	if close_menu then          -- the shortcut opened the menu: toggle it closed again
-		self.queue[#self.queue + 1] = {name = "SQUADMSG_MENU", count = 1}
+		self.queue[#self.queue + 1] = {name = "SQUADMSG_MENU", byname = true, count = 1}
 	end
 	self:ack(o.seq, ok and "ok" or "fail", detail)
 end
@@ -224,11 +236,11 @@ function DroidLink:runCommand(seq, body)
 	end
 	local actions, missing, used = {}, {}, {}
 	for name, count in body:gmatch("([%w_]+):(%d+)") do
-		local n = self:controlNumber(name)
+		local n, byname = self:controlNumber(name)
 		if n == nil then
 			missing[#missing + 1] = name
 		else
-			actions[#actions + 1] = {num = n, name = name, count = tonumber(count)}
+			actions[#actions + 1] = {num = n, byname = byname, name = name, count = tonumber(count)}
 			used[#used + 1] = name .. "=" .. n
 		end
 	end
@@ -269,7 +281,11 @@ function DroidLink:pressControls()
 		return
 	end
 	if not self.active then self:setButtonMode(true) end
-	pcall(function() ci.useButtonControl(-1, a.name) end)    -- -1: by name
+	if a.byname then
+		pcall(function() ci.useButtonControl(-1, a.name) end)    -- -1: by name
+	else
+		pcall(function() ci.useButtonControl(a.num, "") end)     -- by number (custom controls)
+	end
 	self.pressed = true
 	a.count = a.count - 1
 	if a.count <= 0 then table.remove(self.queue, 1) end
