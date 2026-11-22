@@ -128,7 +128,7 @@ class DroidTab(ttk.Frame):
         self.example = ttk.Label(row, text="", wraplength=470, justify="left", foreground=theme.C["cyan"])
         self.example.pack(side="left", padx=8)
         ttk.Label(right, style="Hint.TLabel", wraplength=780, justify="left",
-                  text="How the droid writes on the HUD (Events tab). “Calls you”: e.g. Boss, Commander. "
+                  text="How the droid writes on the HUD (Setup tab). “Calls you”: e.g. Boss, Commander. "
                        "Lines: config/personalities.json — edit them or add your own personality."
                   ).pack(anchor="w", pady=(4, 0))
 

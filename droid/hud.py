@@ -6,7 +6,7 @@ the droid reacts to; only on your screen, through the game link.
 
 The lines live in config/personalities.json (editable; the built-in file fills what's missing):
 one block per personality, one list of lines per situation, picked at random. Settings:
-  game_link.hud_messages   true/false (Events tab)
+  game_link.hud_messages   true/false, plus hud_where/position/size/seconds (Setup tab)
   droid.personality        "rebel", "cheerful", "grumpy", "nervous", "by_the_book" (Droid tab)
   droid.call_player        how the droid calls you ("Boss"), used by the lines with {you}
   droid.beep_captions      true: "[excited whistle]" before the line

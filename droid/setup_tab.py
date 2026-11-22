@@ -5,7 +5,7 @@ import math
 import tkinter as tk
 from tkinter import ttk
 
-from . import theme, voices
+from . import hud, theme, voices
 from .settings_io import update_settings
 from .sounds import default_device_name, find_device, list_devices
 
@@ -61,8 +61,8 @@ class SetupTab(ttk.Frame):
         self.triggers = [dict(t) for t in ptt.get("triggers", []) if t.get("enabled", True)]
         self._capture = None
         self._ptt_probe = None
-        box = ttk.LabelFrame(self, text="Talking to the droid — how it listens", padding=10)
-        box.pack(fill="x", pady=(10, 0))
+        box = ttk.LabelFrame(self, text="Talking to the droid — how it listens", padding=8)
+        box.pack(fill="x", pady=(8, 0))
         mode = "ptt" if ptt.get("enabled", False) and self.triggers else "always"
         self.mode_var = tk.StringVar(value=mode)
         ttk.Radiobutton(box, text="Always listening: commands start with the droid's name "
@@ -75,7 +75,7 @@ class SetupTab(ttk.Frame):
         self.ptt_frame.pack(fill="x", padx=(24, 0))
         row = ttk.Frame(self.ptt_frame)
         row.pack(fill="x", pady=(6, 0))
-        self.trig_list = tk.Listbox(row, height=4, width=52, activestyle="none", exportselection=False,
+        self.trig_list = tk.Listbox(row, height=3, width=52, activestyle="none", exportselection=False,
                                     bg=C["field"], fg=C["text"], selectbackground=C["amber"],
                                     selectforeground=C["bg"], highlightthickness=1,
                                     highlightbackground=C["border"], borderwidth=0)
@@ -98,8 +98,8 @@ class SetupTab(ttk.Frame):
         self.show_mode()
 
         # ---- output
-        box = ttk.LabelFrame(self, text="Droid audio output — where the droid's voice plays", padding=10)
-        box.pack(fill="x", pady=(10, 0))
+        box = ttk.LabelFrame(self, text="Droid audio — where the droid's voice plays, and how loud", padding=8)
+        box.pack(fill="x", pady=(8, 0))
         row = ttk.Frame(box)
         row.pack(fill="x")
         ttk.Label(row, text="Output device:").pack(side="left")
@@ -110,28 +110,53 @@ class SetupTab(ttk.Frame):
         cb.pack(side="left", padx=8)
         cb.bind("<<ComboboxSelected>>", lambda e: self.mark_dirty())
         ttk.Button(row, text="▶ Test", command=self.test_output).pack(side="left")
-        ttk.Label(box, style="Hint.TLabel", wraplength=900, justify="left",
-                  text=f"Windows default plays through Windows' own sound system (currently "
-                       f"{default_device_name('output') or '?'}), which works on every PC. Pick a "
-                       "specific device to send the droid somewhere else, for example to speakers "
-                       "while the game uses your headset. If the test is silent, go back to "
-                       "Windows default.").pack(anchor="w", pady=(6, 0))
+        ttk.Label(row, style="Hint.TLabel", wraplength=420, justify="left",
+                  text=f"Windows default ({default_device_name('output') or '?'}) works on every PC; "
+                       "if a specific device's test is silent, go back to it.").pack(side="left", padx=10)
 
-        # ---- volume
-        box = ttk.LabelFrame(self, text="Master volume — every droid sound", padding=10)
-        box.pack(fill="x", pady=(10, 0))
+        # ---- volume (same box)
         row = ttk.Frame(box)
-        row.pack(fill="x")
-        ttk.Label(row, text="🔊").pack(side="left")
+        row.pack(fill="x", pady=(8, 0))
+        ttk.Label(row, text="Master volume 🔊").pack(side="left")
         self.volume_var = tk.DoubleVar(value=round(self.ed.sounds.volume * 100))
-        scale = ttk.Scale(row, from_=0, to=100, variable=self.volume_var, orient="horizontal", length=420,
+        scale = ttk.Scale(row, from_=0, to=100, variable=self.volume_var, orient="horizontal", length=360,
                           command=lambda _v: self.volume_label.configure(text=f"{self.volume_var.get():.0f}%"))
         scale.pack(side="left", padx=8)
         scale.bind("<ButtonRelease-1>", lambda e: self.save_volume())
         self.volume_label = ttk.Label(row, text=f"{self.volume_var.get():.0f}%", width=5)
         self.volume_label.pack(side="left")
-        ttk.Label(row, text="saved immediately; a running Droid Commander uses it right away",
+        ttk.Label(row, text="every droid sound; saved immediately, also while flying",
                   style="Hint.TLabel").pack(side="left", padx=12)
+
+        # ---- droid messages on the HUD (saved immediately, like the volume)
+        box = ttk.LabelFrame(self, text="Droid messages on the HUD — what the droid writes in game", padding=8)
+        box.pack(fill="x", pady=(8, 0))
+        row = ttk.Frame(box)
+        row.pack(fill="x")
+        gl = dict(hud.DISPLAY_DEFAULTS, **(s.get("game_link") or {}))
+        self.hud_var = tk.BooleanVar(value=hud.enabled(s.get("game_link")))
+        ttk.Checkbutton(row, text="Show them", variable=self.hud_var, command=self.save_hud).pack(side="left")
+        self.where_var = tk.StringVar(value=hud.WHERE.get(gl["hud_where"], hud.WHERE["display"]))
+        self.pos_var = tk.StringVar(value=hud.POSITIONS.get(gl["hud_position"], hud.POSITIONS["left"]))
+        self.size_var = tk.StringVar(value=hud.SIZES.get(gl["hud_size"], hud.SIZES["small"]))
+        self.secs_var = tk.StringVar(value=str(gl["hud_seconds"]))
+        for label, var, values, width in (("on the", self.where_var, list(hud.WHERE.values()), 17),
+                                          ("at", self.pos_var, list(hud.POSITIONS.values()), 26),
+                                          ("text", self.size_var, list(hud.SIZES.values()), 7)):
+            ttk.Label(row, text=label).pack(side="left", padx=(12, 4))
+            cb = ttk.Combobox(row, textvariable=var, values=values, state="readonly", width=width)
+            cb.pack(side="left")
+            cb.bind("<<ComboboxSelected>>", lambda e: self.save_hud())
+        ttk.Label(row, text="for").pack(side="left", padx=(12, 4))
+        sp = ttk.Spinbox(row, from_=2, to=30, increment=1, textvariable=self.secs_var, width=4,
+                         command=self.save_hud)
+        sp.pack(side="left")
+        sp.bind("<FocusOut>", lambda e: self.save_hud())
+        ttk.Label(row, text="s").pack(side="left", padx=(4, 0))
+        ttk.Label(box, style="Hint.TLabel", wraplength=1000, justify="left",
+                  text="Answers, problems and game events, in the droid's personality (Droid tab). Only on "
+                       "your screen. The droid display is away from the reticle. Saved immediately."
+                  ).pack(anchor="w", pady=(6, 0))
 
         bottom = ttk.Frame(self)
         bottom.pack(side="bottom", fill="x", pady=(8, 0), before=self.winfo_children()[0])
@@ -356,6 +381,31 @@ class SetupTab(ttk.Frame):
         snd.backend, snd.device = backend, self._index(name, self.outputs) if name else None
         snd.play("ready")                        # playback starts now; restore the saved choice
         snd.backend, snd.device = old
+
+    # ------------------------------------------------------ HUD messages
+    def hud_settings(self):
+        key = lambda table, var, default: next((k for k, v in table.items() if v == var.get()), default)
+        try:
+            secs = max(2, min(30, int(self.secs_var.get())))
+        except ValueError:
+            secs = hud.DISPLAY_DEFAULTS["hud_seconds"]
+        return {"hud_messages": bool(self.hud_var.get()),
+                "hud_where": key(hud.WHERE, self.where_var, "display"),
+                "hud_position": key(hud.POSITIONS, self.pos_var, "left"),
+                "hud_size": key(hud.SIZES, self.size_var, "small"),
+                "hud_seconds": secs}
+
+    def save_hud(self):
+        """Saved right away (settings.json "game_link"): a running Droid Commander uses it at once."""
+        with open(self.ed.settings_path, "r", encoding="utf-8-sig") as f:
+            gl = dict(json.load(f).get("game_link") or {})
+        new = self.hud_settings()
+        if all(gl.get(k) == v for k, v in new.items()):
+            return
+        gl.update(new)
+        update_settings(self.ed.settings_path, {"game_link": gl})
+        self.ed.set_status("Droid messages on the HUD: " + (
+            f"on, {self.where_var.get().lower()}." if self.hud_var.get() else "off."))
 
     def save_volume(self):
         data = voices.load(self.ed.voices_path)

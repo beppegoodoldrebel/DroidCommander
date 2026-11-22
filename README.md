@@ -139,7 +139,7 @@ squealing when your hull is hit, alarm when the hull is low, and so on.
     its version in `droid_state.txt`, so the app warns when the game still runs an older copy
     (FSO loads scripts only at startup). The command file keeps the last 8 commands and the
     answer file the last 8 answers, so commands sent in a quick row are never lost.
-  - **Droid messages on the HUD** (`droid/hud.py`, switch in the Events tab): like a translation
+  - **Droid messages on the HUD** (`droid/hud.py`, settings in the Setup tab): like a translation
     of the beeps, the droid writes its **answers**, **problems** (why an order couldn't be done)
     and the **game events** it reacts to among the game's HUD messages, e.g.
     "R2: [excited whistle] Got him! Great shot, Boss!". Only on your screen. It doesn't comment

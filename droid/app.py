@@ -169,7 +169,7 @@ class DroidApp:
         return hud.Writer(self.s.get("droid"))
 
     def hud_say(self, text):
-        """Write "<droid>: <text>" among the game's HUD messages (if switched on in the Events tab)."""
+        """Write "<droid>: <text>" among the game's HUD messages (if switched on in the Setup tab)."""
         if self.hud_on and text:
             try:
                 self.executor.lua.say(self.name, text, hud.display_settings(self.s.get("game_link")))
@@ -273,7 +273,7 @@ class DroidApp:
             self.players_dir = gamelink.game_players_dir(self.s)
             print(f"Game folder: {self.players_dir or 'not found'}")
         on = hud.enabled(new.get("game_link"))
-        if on != self.hud_on:                                     # HUD messages switched (Events tab)
+        if on != self.hud_on:                                     # HUD messages switched (Setup tab)
             self.hud_on = on
             print(f"Droid messages on the HUD: {'on' if on else 'off'}")
         self.s["game_link"] = new.get("game_link") or {}         # where/how the droid's lines appear
