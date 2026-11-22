@@ -34,10 +34,10 @@ def enabled(game_link_settings):
 # (at once, away from the reticle, fading out); "messages": the game's message box (the mod's
 # own gauge: Fate of the Galaxy's is large, in the middle, and types the text slowly).
 WHERE = {"display": "Droid display", "messages": "Game message box"}
-POSITIONS = {"left": "Left, under the mission lists", "bottom_left": "Bottom left",
-             "bottom": "Bottom centre", "top_right": "Top right"}
+POSITIONS = {"top_center": "Top centre", "left": "Left, under the mission lists",
+             "bottom_left": "Bottom left", "bottom": "Bottom centre", "top_right": "Top right"}
 SIZES = {"small": "Small", "medium": "Medium", "large": "Large"}
-DISPLAY_DEFAULTS = {"hud_where": "display", "hud_position": "left", "hud_size": "small", "hud_seconds": 6}
+DISPLAY_DEFAULTS = {"hud_where": "display", "hud_position": "top_center", "hud_size": "medium", "hud_seconds": 6}
 
 
 def display_settings(game_link_settings):
@@ -49,8 +49,8 @@ def display_settings(game_link_settings):
         secs = max(2, min(30, int(gl["hud_seconds"])))
     except (TypeError, ValueError):
         secs = 6
-    return {"pos": gl["hud_position"] if gl["hud_position"] in POSITIONS else "left",
-            "size": gl["hud_size"] if gl["hud_size"] in SIZES else "small", "secs": secs}
+    return {"pos": gl["hud_position"] if gl["hud_position"] in POSITIONS else "top_center",
+            "size": gl["hud_size"] if gl["hud_size"] in SIZES else "medium", "secs": secs}
 
 
 def load_personalities(path=USER_FILE):

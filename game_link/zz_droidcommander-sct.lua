@@ -12,7 +12,7 @@
 --
 -- Droid messages: "say:R2|Hull 72%, shields 45%" shows "R2: Hull 72%, shields 45%" among the
 -- HUD messages (only on your screen), like a translation of the droid's beeps.
--- "show:pos=left;size=small;secs=6|R2|text" draws it instead on the droid's own small display
+-- "show:pos=top_center;size=medium;secs=6|R2|text" draws it instead on the droid's own small display
 -- (On HUD Draw), at once and away from the reticle; it fades out after a few seconds.
 --
 -- Multiplayer: it runs in fair-play mode, so the droid only knows what your HUD shows:
@@ -26,9 +26,9 @@
 DroidLink = {
 	-- raise it whenever this script changes: Droid Commander warns when the game still runs an
 	-- older copy (FSO loads scripts only when it starts)
-	version = 11,
+	version = 12,
 	display = {},                     -- droid display lines: {sender, text, born, until}
-	display_cfg = {pos = "left", size = "small", secs = 6},
+	display_cfg = {pos = "top_center", size = "medium", secs = 6},
 	file = "droid_link.log",
 	state_file = "droid_state.txt",   -- snapshot of your ship, rewritten every second
 	next_state = 0,
@@ -254,6 +254,7 @@ end
 -- ------------------------------------------------------------------ droid display
 -- positions as fractions of the screen: x, y of the first line, width of the text box
 local DISPLAY_POS = {
+	top_center  = {0.28,  0.035, 0.44, true},   -- centred at the top (true: centre each line)
 	left        = {0.008, 0.42, 0.20},   -- under the mission lists on the left
 	bottom_left = {0.008, 0.64, 0.20},
 	bottom      = {0.36,  0.64, 0.28},
@@ -288,11 +289,11 @@ function DroidLink:drawDisplay()
 	self.display = keep
 	if #keep == 0 then return end
 	local cfg = self.display_cfg
-	local p = DISPLAY_POS[cfg.pos] or DISPLAY_POS.left
+	local p = DISPLAY_POS[cfg.pos] or DISPLAY_POS.top_center
 	local w, h = gr.getScreenWidth(), gr.getScreenHeight()
 	if w <= 0 or h <= 0 then return end
 	local old_font = gr.CurrentFont
-	local want = DISPLAY_FONT[cfg.size] or 1
+	local want = DISPLAY_FONT[cfg.size] or 2
 	if #gr.Fonts > 0 then gr.CurrentFont = gr.Fonts[math.min(want, #gr.Fonts)] end
 	local x = math.floor(w * p[1])
 	local y = math.floor(h * p[2])
@@ -302,9 +303,14 @@ function DroidLink:drawDisplay()
 		local left = l.until_t - now
 		local alpha = math.floor(255 * math.max(0, math.min(1, left)))   -- fade in the last second
 		local name = l.sender .. ": "
+		local lx = x
+		if p[4] then                                                      -- centred: if it fits on one line
+			local full = gr.getStringWidth(name) + gr.getStringWidth(l.text)
+			if full < x2 - x then lx = math.floor(x + (x2 - x - full) / 2) end
+		end
 		gr.setColor(255, 180, 58, alpha)                                  -- droid name: amber
-		gr.drawString(name, x, y)
-		local nx = x + gr.getStringWidth(name)
+		gr.drawString(name, lx, y)
+		local nx = lx + gr.getStringWidth(name)
 		gr.setColor(140, 215, 255, alpha)                                 -- text: hologram blue
 		local n = gr.drawString(l.text, nx, y, math.max(nx + 50, x2), y + line_h * 4)
 		y = y + line_h * math.max(1, n or 1) + math.floor(line_h / 3)

@@ -137,12 +137,12 @@ class SetupTab(ttk.Frame):
         self.hud_var = tk.BooleanVar(value=hud.enabled(s.get("game_link")))
         ttk.Checkbutton(row, text="Show them", variable=self.hud_var, command=self.save_hud).pack(side="left")
         self.where_var = tk.StringVar(value=hud.WHERE.get(gl["hud_where"], hud.WHERE["display"]))
-        self.pos_var = tk.StringVar(value=hud.POSITIONS.get(gl["hud_position"], hud.POSITIONS["left"]))
-        self.size_var = tk.StringVar(value=hud.SIZES.get(gl["hud_size"], hud.SIZES["small"]))
+        self.pos_var = tk.StringVar(value=hud.POSITIONS.get(gl["hud_position"], hud.POSITIONS["top_center"]))
+        self.size_var = tk.StringVar(value=hud.SIZES.get(gl["hud_size"], hud.SIZES["medium"]))
         self.secs_var = tk.StringVar(value=str(gl["hud_seconds"]))
         for label, var, values, width in (("on the", self.where_var, list(hud.WHERE.values()), 17),
                                           ("at", self.pos_var, list(hud.POSITIONS.values()), 26),
-                                          ("text", self.size_var, list(hud.SIZES.values()), 7)):
+                                          ("text", self.size_var, list(hud.SIZES.values()), 9)):
             ttk.Label(row, text=label).pack(side="left", padx=(12, 4))
             cb = ttk.Combobox(row, textvariable=var, values=values, state="readonly", width=width)
             cb.pack(side="left")
@@ -391,8 +391,8 @@ class SetupTab(ttk.Frame):
             secs = hud.DISPLAY_DEFAULTS["hud_seconds"]
         return {"hud_messages": bool(self.hud_var.get()),
                 "hud_where": key(hud.WHERE, self.where_var, "display"),
-                "hud_position": key(hud.POSITIONS, self.pos_var, "left"),
-                "hud_size": key(hud.SIZES, self.size_var, "small"),
+                "hud_position": key(hud.POSITIONS, self.pos_var, "top_center"),
+                "hud_size": key(hud.SIZES, self.size_var, "medium"),
                 "hud_seconds": secs}
 
     def save_hud(self):
