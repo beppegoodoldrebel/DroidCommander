@@ -3,7 +3,11 @@
 An astromech droid (R2, R5…) that listens to your voice commands, executes them in
 FreeSpace Open / Fate of the Galaxy and answers with droid sounds.
 
-> "R2, open S-foils" → presses the *Toggle S-foils* key from your preset → *beep-bweep!*
+> "R2, open S-foils" → the game link presses FotG's *Toggle S-foils* control inside the game → *beep-bweep!*
+
+No key bindings are involved: commands name the game's controls (`CUSTOM_CONTROL_3`,
+`MAX_THROTTLE`…) and a small Lua script inside FreeSpace Open (the **game link**) presses them,
+whatever key, joystick button or nothing they are bound to, on any keyboard layout.
 
 **Players:** download the installer from the [Releases](../../releases) page and read
 [README_USERS.md](README_USERS.md) or the [user manual (PDF)](docs/DroidCommander_User_Manual.pdf).
@@ -22,9 +26,9 @@ Run **`DroidCommander-Setup-<version>.exe`**.
   nothing else needs to be downloaded.
 - Your settings, commands, voices and sound files live in `%APPDATA%\DroidCommander`. The
   uninstaller asks whether to keep them.
-- At the first start, the app looks for FreeSpace Open's `data\players` folder (standard or
-  Knossos.NET install). If it can't find it, for example with a portable Knossos, choose it in
-  **Commands → Game controls → Browse…**.
+- At the first start, the app looks for FreeSpace Open (standard or Knossos.NET install) and
+  opens the **Events** tab: press **Install game link** there. If Fate of the Galaxy isn't found
+  (for example with a portable Knossos), press **Choose folder…** and pick the mod folder.
 - Windows SmartScreen may warn about an "unknown publisher", because the program is not code
   signed: choose *More info → Run anyway*.
 
@@ -62,7 +66,7 @@ Double-click **`Droid Commander.bat`**. It is one window with two modes:
 - **▶ LAUNCH!** (top right) switches the same window to **ACTIVE**: Droid Commander starts
   listening and the window shows:
   - a status lamp: starting / listening / push-to-talk;
-  - the configuration in use: droid, callsigns, game controls preset, voice, listening modes;
+  - the configuration in use: droid, callsigns, voice, listening modes, game link;
   - the last phrase heard, the last command with its result, and a log.
 
   **■ STOP · CONFIGURE** goes back to the tabs. Unsaved changes are offered for saving before
@@ -95,31 +99,21 @@ Voice commands only run when they start with it ("Chopper, open S-foils").
 ### Orders to wingmen
 
 FSO's wingman shortcuts (attack my target, cover me, form up…) don't send the order: they
-open the comm menu **Give Command To** (1 Ships, 2 Wings, 3 All Ships, 4 Reinforcements)
-with the order already chosen. So the droid also picks the recipient:
+open the comm menu **Give Command To** (Ships, Wings, All Fighters, Reinforcements) with the
+order already chosen. The game link script presses the shortcut and then picks the recipient
+with FSO's comm menu Lua functions (`hu.isCommMenuOpen()`, `mn.CommItems[i].Name` / `.Active` /
+`:selectItem()`):
 
-- **"Wingmen, cover me"**: the shortcut, then **3** (All Ships).
-- **"Squad Alpha, cover me"** (or "Alpha wing, cover me"): the shortcut, then **2** (Wings),
-  then Alpha's number in that list. A bare name ("Alpha, …") isn't accepted, because short
-  names like "nu" or "pi" would trigger by mistake. The game link writes the list in the same order as the game (the mission's starting
-  wings first, then the others; only wings with a friendly ship still flying). "Gold"
-  also finds "Gold Aurek" when it's the only Gold wing.
+- **"Wingmen, cover me"**: "All Fighters".
+- **"Squad Alpha, cover me"** (or "Alpha wing, cover me"): "Wings", then the wing **by its
+  name**, so a wing that refuses an order can't shift the others. A bare name ("Alpha, …")
+  isn't accepted, because short names like "nu" or "pi" would trigger by mistake. "Gold" also
+  finds "Gold Aurek" when it's the only Gold wing.
 - The names you can say are in the Droid tab → **Wing names** (Greek letters and colours by
   default; names the speech model doesn't know are ignored).
-- If the wing isn't in the mission, or the game link isn't installed, the droid answers with
-  the error sound and presses nothing.
-
-**Through the game link** (the normal case when it is installed and a mission is running): the
-script presses the shortcut and then picks "All Fighters", or "Wings" and the wing **by its
-name**, with FSO's comm menu Lua functions (`hu.isCommMenuOpen()`, `mn.CommItems[i].Name` /
-`.Active` / `:selectItem()`). So a wing that refuses an order can't shift the others, and a
-refused order closes the menu again and gives the error sound with the reason ("no wing omega
-(wings: Alpha, Gold Aurek…)", "which gold?", "Red can't take that order").
-
-**With keys** (no game link): the numbers come from the wing list the script writes. Limit: when
-a wing refuses that particular order (some ship types do), the game leaves it out of the list,
-so the numbers after it shift and the order can reach the wrong wing. The rearm and capture
-shortcuts don't use this menu and are left as they are.
+- A refused order closes the menu again and gives the error sound with the reason ("no wing
+  omega (wings: Alpha, Gold Aurek…)", "which gold?", "Red can't take that order").
+  The rearm and capture shortcuts don't use this menu and are left as they are.
 
 ## Game events (the droid reacts to the game)
 
@@ -132,17 +126,18 @@ squealing when your hull is hit, alarm when the hull is low, and so on.
     `On Ship Collision`, `On Subsystem Destroyed`, mission start/end) and appends them to
     `droid_link.log` in FreeSpace Open's user folder (`…/FreeSpaceOpen/<mod>/data/missions/`).
   - It runs every handler protected so it can't interrupt the game.
-  - **Pressing controls from inside the game** (*Press controls through the game link*, on by
-    default): a voice command made only of game actions ("bind", e.g. `MAX_THROTTLE`, with
-    repeats) is written to `droid_cmd.txt`; the script reads it about 12 times per second,
-    presses each control with FSO's Lua button controls (`ba.setButtonControlMode(
-    BUTTON_CONTROL_LUA_ADDITIVE)`, `ControlInfo:useButtonControl`: held one frame, released one
-    frame) and answers in `droid_ack.txt`. Benefits: no keyboard-layout issues, controls bound
-    only to a joystick work, and the game window doesn't need the focus. Droid Commander falls
-    back to pressing keys when no mission is running, the script doesn't answer within 0.6 s,
-    or it doesn't know the control. Commands with fixed keys, mouse buttons, pauses or held
-    keys always use the keyboard; wingman orders go through the comm menu functions (see
-    *Orders to wingmen*). Commands left in the file from before a mission starts are never run.
+  - **Pressing controls from inside the game** (how every voice command reaches the game):
+    the command is written to `droid_cmd.txt` (`seq|MAX_THROTTLE:1,WAIT:200,INCREASE_ENGINE:6`);
+    the script reads it about 12 times per second, presses each control with FSO's Lua button
+    controls (`ba.setButtonControlMode(BUTTON_CONTROL_LUA_ADDITIVE)`,
+    `ControlInfo.useButtonControl`: held one frame, released one frame; by name, or by its fixed
+    IoActionId number for the controls FSO's Lua name table lacks, such as `CUSTOM_CONTROL_1-5`)
+    and answers in `droid_ack.txt`. No key bindings, keyboard layout or window focus are
+    involved, and controls bound only to a joystick work. If no mission is running or the
+    script doesn't answer within 0.6 s, the droid gives the error sound with the reason.
+    Commands left in the file from before a mission starts are never run. The script reports
+    its version in `droid_state.txt`, so the app warns when the game still runs an older copy
+    (FSO loads scripts only at startup).
     **Commands → ▶ Test all in game…** (droid/test_all.py) tries every command at once during
     a mission: *Check names* sends `check:NAME,…` and the script answers which controls the
     game knows (nothing pressed); *Press all* presses each command one every 2 s (wingman
@@ -200,42 +195,51 @@ in the Commands tab, or new questions with **Add… → Question**.
 
 ## Game controls
 
-Commands press the keys of a FreeSpace Open control preset. At the top of the **Commands**
-tab you choose which one:
+Commands name FreeSpace Open's control actions (`droid/controls.py`: the IoActionId list, with
+FSO's numbers). Their labels come from the mod's own `Controlconfigdefaults.tbl` (found in the
+mod folder or a sibling package, e.g. FotG 2's `FG_Core`): FotG calls `CUSTOM_CONTROL_3`
+"Toggle S-foils" and turned `TOGGLE_GLIDING` into "Toggle Active Pause". Key bindings don't
+matter: the game link presses the control itself.
 
-- **Players folder**: `…\FreeSpaceOpen\data\players`. It is detected automatically; use
-  **Browse…** if yours is elsewhere.
-- **Follow pilot** (recommended): uses the preset your pilot uses in the game. Each pilot file
-  records it, so if you switch preset in the game, Droid Commander switches too.
-- **Fixed preset**: always uses the preset you pick.
+**⇩ Import from game…** lists every control, the mod's own ones first, with their labels. Tick
+the ones you want and they become voice commands, named after the control and with phrases
+made from the name ("Toggle S-foils" → "toggle s foils", "s foils"). Controls that already have
+a command, or that the mod switches off, can't be ticked.
 
-**⇩ Import from game…** lists every action of the preset with its key. Tick the ones you want
-and they become voice commands, named after the action and with a phrase made from the name
-(e.g. "Target Next Closest Hostile" → "target next closest hostile"). Actions that already have
-a command, or are bound only to a joystick, are shown but can't be ticked. Since commands refer
-to game actions rather than keys, changing preset never breaks them.
+**When the mod changes its controls** (`droid/controls_watch.py`): at every start the editor
+compares the mod's named controls with the ones it saw last time (`controls_seen` in
+`settings.json`) and, if needed, opens **Game controls changed**:
+
+- a **new** control (e.g. `CUSTOM_CONTROL_4` switched on as "Toggle Ion Cannon"): add a voice
+  command for it, phrases included;
+- a control a command uses that **now does something else** (its name changed completely, or
+  — the first time — nothing in the command's name and phrases matches it, like "Toggle glide"
+  on FotG 2's "Toggle Active Pause"): rename the command to match, switch it off, or keep it;
+- a control the mod **switched off**: switch the command off.
+
+*Ask me later* shows it again at the next start; *Ignore* remembers the current controls.
 
 ## Command editor
 
-`python -m droid edit` (or `Edit Commands.bat`) opens a window where you can:
+The **Commands** tab:
 
 - add, duplicate, delete and enable/disable commands, with a search box;
 - write phrases one per line. Words the speech model doesn't know and phrases used by two
   commands are flagged with ⚠;
-- build the action list:
-  - pick a **game action** from your FSO preset, showing what each one is bound to and
-    whether it can be used by voice;
-  - **capture a key** by pressing it, combinations included;
-  - add mouse clicks and waits;
-  - set repeat counts and hold times;
+- build the action list: **game controls** (picked from the list above, with a repeat count),
+  **waits** and **questions**;
 - choose the response sound and play it;
-- **Test in game**: runs the command after a 5-second countdown, so you can switch to the game;
+- **Test in game**: runs the command after a 5-second countdown (time to click into the game:
+  FSO pauses when it isn't in front);
+- **▶ Test all in game…** (`droid/test_all.py`): *Check names* asks the game which controls it
+  knows (nothing pressed); *Press all* presses each command one every 2 s (wingman orders
+  optional, to all fighters; END_MISSION, WARP_MESSAGE and TOGGLE_GLIDING are skipped);
 - **Try a phrase**: type what you would say and see which command it triggers.
 
 Saving keeps a `commands.json.bak` backup of the previous file, and a running Droid
 Commander reloads the commands within a couple of seconds. You don't need to restart it,
-even mid-game. Action names come from the mod's `Controlconfigdefaults.tbl`
-(`control_labels_file` in `settings.json`).
+even mid-game. Old commands with keyboard keys or mouse buttons are flagged ⚠: replace those
+actions with game controls.
 
 ## Droid voice
 
@@ -303,9 +307,9 @@ next LAUNCH!.
 | Command | What it does |
 |---|---|
 | `python -m droid` | start listening |
-| `python -m droid check` | validate commands, preset keys and the speech model vocabulary |
-| `python -m droid binds` | show the key each command presses |
-| `python -m droid test "open s foils"` | run a command without voice (5 s to switch to the game) |
+| `python -m droid check` | validate commands and the speech model vocabulary |
+| `python -m droid binds` | show the game control each command presses, with the mod's name for it |
+| `python -m droid test "open s foils"` | run a command without voice, during a mission (5 s to switch to the game) |
 | `python -m droid learn` | print the names of pressed keys/buttons, to configure push-to-talk |
 | `python -m droid sound ack` | play a sound (`ack`, `error`, `unknown`, `ready`, `chatter`) |
 | `python -m droid mics` | list microphones (or pick one in the Setup tab) |
@@ -346,12 +350,12 @@ key and button pressed, if you prefer editing the file.
 
 Available actions (they can be chained):
 
-- `{"bind": "INCREASE_ENGINE", "repeat": 6}`: presses the key bound to that action in your
-  FSO preset. If you rebind keys in the game, the app picks up the change automatically.
-- `{"key": "SHIFT-KEY_1"}`: a raw key, using FSO key names.
-- `{"mouse": "LEFT_BUTTON"}`
-- `{"wait": 200}`: pause in milliseconds.
-- Every action accepts `"hold_ms"` to hold the key down longer.
+- `{"bind": "INCREASE_ENGINE", "repeat": 6}`: a game control (FSO's name), pressed inside the
+  game by the game link, whatever it is bound to.
+- `{"wait": 200}`: pause in milliseconds (mission time: it stops while the game is paused).
+- `{"ask": "clear"}`: a question the droid answers from your ship's state.
+
+Old `{"key": …}` and `{"mouse": …}` actions are no longer supported (flagged ⚠ in the editor).
 
 Write phrases naturally: "R2" becomes "r two" and "S-foil" becomes "s foil".
 
@@ -367,7 +371,8 @@ often heard that way.
 
 ## Known limitations
 
-- Actions bound **only to a joystick** can't be simulated: add a keyboard key as the
-  secondary binding in the game. `check` reports them.
-- S-foils are a *toggle*: "open" and "close" press the same key.
-- If FSO runs as administrator, Droid Commander must run as administrator too.
+- Voice commands need the game link and a mission running: outside a mission the droid
+  answers with the error sound.
+- S-foils are a *toggle*: "open" and "close" press the same control.
+- FSO loads the game link only when it starts: after installing or updating it, restart the
+  game (the Events tab warns when the game still runs an older copy).

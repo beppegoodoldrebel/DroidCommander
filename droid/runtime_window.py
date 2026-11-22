@@ -79,7 +79,7 @@ class RuntimePanel(tk.Frame):
         info.pack(side="left", fill="both", expand=True, padx=(12, 0))
         self.fields = {}
         for row, (key, label) in enumerate((("name", "Droid"), ("callsigns", "Callsigns"),
-                                            ("controls", "Game controls"), ("voice", "Voice"),
+                                            ("voice", "Voice"),
                                             ("modes", "Listening"), ("commands", "Commands"),
                                             ("link", "Game link"))):
             tk.Label(info, text=label.upper(), bg=C["bg"], fg=C["dim"], font=C["F"]["sub"]).grid(
@@ -227,9 +227,6 @@ class RuntimePanel(tk.Frame):
         elif t == "ready":
             self.fields["name"].configure(text=ev.get("name", "—"))
             self.fields["callsigns"].configure(text=", ".join(ev.get("callsigns") or []) or "—")
-            preset = ev.get("preset", "—")
-            pilot = ev.get("pilot")
-            self.fields["controls"].configure(text=f"{preset}" + (f"  (follows pilot {pilot})" if pilot else ""))
             self.fields["voice"].configure(text=ev.get("voice") or "—")
             self.fields["modes"].configure(text=" + ".join(ev.get("modes") or []) or "—")
             self.fields["commands"].configure(text=str(ev.get("commands", "—")))

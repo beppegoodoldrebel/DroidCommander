@@ -1,9 +1,8 @@
-"""FreeSpace Open key names -> DirectInput-style scancodes.
+"""FreeSpace Open key names -> DirectInput-style scancodes (used by push-to-talk triggers).
 
-FSO stores keys with the same numbering as DirectInput (DIK_*): values >= 0x80
-are "extended" keys, sent to Windows as (code & 0x7F) + KEYEVENTF_EXTENDEDKEY.
-Scancodes are position based, so they work regardless of keyboard layout
-(e.g. KEY_SEMICOL is the 'ò' key on an Italian keyboard).
+FSO stores keys with the same numbering as DirectInput (DIK_*): values >= 0x80 are
+"extended" keys. Scancodes are position based, so they work regardless of keyboard layout
+(e.g. KEY_SEMICOL is the 'o grave' key on an Italian keyboard).
 """
 
 FSO_SCANCODES = {
@@ -39,39 +38,3 @@ FSO_SCANCODES = {
 }
 
 SCANCODE_TO_NAME = {v: k for k, v in FSO_SCANCODES.items()}
-
-MODIFIER_SCANCODES = {
-    "SHIFT": FSO_SCANCODES["KEY_LSHIFT"],
-    "ALT": FSO_SCANCODES["KEY_LALT"],
-    "CTRL": FSO_SCANCODES["KEY_LCTRL"],
-}
-
-MOUSE_BUTTONS = ("LEFT_BUTTON", "RIGHT_BUTTON", "MIDDLE_BUTTON")
-
-
-class KeyCombo:
-    def __init__(self, text, modifiers, scancode):
-        self.text = text
-        self.modifiers = modifiers   # list of scancodes
-        self.scancode = scancode
-
-    def __repr__(self):
-        return f"KeyCombo({self.text})"
-
-
-def parse_key(text):
-    """Parse an FSO key string like 'ALT-SHIFT-KEY_T' into a KeyCombo.
-
-    Raises ValueError for unknown names.
-    """
-    text = text.strip().upper()
-    parts = text.split("-")
-    key = parts[-1]
-    mods = []
-    for m in parts[:-1]:
-        if m not in MODIFIER_SCANCODES:
-            raise ValueError(f"unknown modifier '{m}' in '{text}'")
-        mods.append(MODIFIER_SCANCODES[m])
-    if key not in FSO_SCANCODES:
-        raise ValueError(f"unknown key '{key}' in '{text}'")
-    return KeyCombo(text, mods, FSO_SCANCODES[key])

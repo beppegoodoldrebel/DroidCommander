@@ -1,7 +1,9 @@
 # Droid Commander — README for players
 
 **Talk to your astromech droid in Fate of the Galaxy.** Say "R2, open S-foils" and the droid
-presses the right key for you, then answers with droid beeps. It also reacts to what happens
+opens them for you, then answers with droid beeps. No key setup is needed: a small script
+inside the game (the *game link*) works the controls directly, whatever keys or joystick
+buttons you use. It also reacts to what happens
 in the game (a kill, a hit, low hull…), answers simple questions ("R2, are we clear?") and
 relays your orders to your wingmen ("Squad Alpha, cover me").
 
@@ -25,18 +27,19 @@ folder and in the Start menu (*Droid Commander User Manual*).
 Everything is included: the speech model, the droid voices and the game link script.
 Your settings are kept in `%APPDATA%\DroidCommander` and survive updates.
 
-## First start in 5 steps
+## First start in 4 steps
 
-1. **Commands tab → Game controls → Browse…** and choose FreeSpace Open's `data\players`
-   folder, e.g. `…\kn_portable\HardLightProductions\FreeSpaceOpen\data\players`.
-   Choose **Follow pilot** and your pilot: the droid then always uses the keys of that pilot.
+1. **Events tab → Install game link.** Droid Commander finds Fate of the Galaxy by itself; if it
+   doesn't, press **Choose folder…** and pick the mod folder
+   (e.g. `…\kn_portable\Library\FotG_2\FotG_2-2.0.2`). If the game is running, close and
+   restart it: it loads the game link when it starts.
 2. **Setup tab:** pick your **microphone** and press **Test microphone** — the bar must move
    when you speak. Leave the audio output on *Windows default* unless you need something else.
-3. **Events tab → Install game link** (restart the game if it is running). This lets the droid
-   react to the game and answer questions, and it presses your commands' controls from inside
-   the game (any keyboard layout, joystick-only controls too).
-4. Press **LAUNCH!**. The window switches to the active view and shows *LISTENING*.
-5. Start a mission and say: **"R2, full throttle"**.
+3. Press **LAUNCH!**. The window switches to the active view and shows *LISTENING*.
+4. Start a mission and say: **"R2, full throttle"**.
+
+After a Fate of the Galaxy update, Droid Commander checks the game's controls: if the mod added
+a new one, or one of your commands now does something else, it tells you and offers the fix.
 
 ## How to talk to the droid
 
@@ -62,7 +65,8 @@ gamepad button. Pick one that is not used in the game.
 ## The tabs in short
 
 - **Droid** — the droid's name (wake word), other callsigns (Wingmen) and wing names.
-- **Commands** — what you can say and which key each command presses.
+- **Commands** — what you can say and which game control each command works; **Test all in
+  game…** tries them all at once.
 - **Voice** — how the droid sounds: R2-D2, R5, Chopper, BB-8 or Songbird style, your own
   variations, or your own sound files.
 - **Events** — install the game link and choose how the droid reacts to game events.
@@ -73,8 +77,8 @@ gamepad button. Pick one that is not used in the game.
 | Problem | Try this |
 |---|---|
 | The droid hears nothing | Setup tab → Test microphone. Pick the right microphone; speak a bit closer. |
-| It hears me but nothing happens | Commands tab: a ⚠ next to a command means its key isn't found in your game preset (often bound only to a joystick). Add a keyboard key in the game's controls. |
-| "The game is not in the foreground" | Click into the game window. If the game runs as administrator, run Droid Commander as administrator too. |
+| It hears me but nothing happens (error beep) | The game link isn't working: start a mission, check the Events tab (installed? "the game is running the old game link" means: restart the game). |
+| A command does something unexpected | Fate of the Galaxy may use that control for something else: see its name in the Commands tab (*Game control* column). |
 | I can't hear the droid | Setup tab → output *Windows default* → Test. Check the master volume. |
 | The droid doesn't react to the game | Events tab: install (or **Update**) the game link, restart the game, start a mission. If FotG isn't found, press **Choose folder…** and pick the mod folder. |
 | "Squad Alpha" gives an error beep | That wing isn't in the mission (or has no ships left), or the game link isn't installed. |

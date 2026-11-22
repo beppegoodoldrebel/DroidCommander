@@ -107,8 +107,9 @@
 
   <h2>1 · Introduction and requirements</h2>
   <p>Droid Commander listens to your voice while you fly. Start a sentence with your droid's name —
-    <b>"R2, open S-foils"</b> — and it presses the matching key in the game, then answers with a
-    droid beep. Speech recognition runs entirely on your PC: nothing is sent to the internet.</p>
+    <b>"R2, open S-foils"</b> — and it opens them, then answers with a droid beep. There is no key setup:
+    a small script inside the game, the <b>game link</b>, works the game's controls directly, whatever keys or
+    joystick buttons you use. Speech recognition runs entirely on your PC: nothing is sent to the internet.</p>
   <p>What it can do:</p>
   <ul>
     <li><b>Voice commands</b> for targeting, throttle, power distribution, shields, S-foils, hyperdrive…</li>
@@ -140,25 +141,24 @@
     reinstalls.</p>
 
   <h2>3 · Quick start</h2>
-  <p>The first time, Droid Commander doesn't know where the game is. Five steps and you're flying:</p>
+  <p>Four steps and you're flying:</p>
   <ol class="steps">
-    <li><b>Commands tab → Game controls → Browse…</b> and choose FreeSpace Open's
-      <code>data\players</code> folder, for example
-      <code>…\kn_portable\HardLightProductions\FreeSpaceOpen\data\players</code>.
-      Choose <b>Follow pilot</b> and select your pilot: the droid then always uses that pilot's keys,
-      even when you change them in the game.</li>
+    <li><b>Events tab → Install game link</b>. Droid Commander opens this tab the first time and finds
+      Fate of the Galaxy by itself; if it doesn't, press <b>Choose folder…</b> and pick the mod folder, e.g.
+      <code>…\kn_portable\Library\FotG_2\FotG_2-2.0.2</code>. If the game is running, close and restart it:
+      it loads the game link when it starts.</li>
     <li><b>Setup tab</b>: pick your <b>microphone</b> and press <b>Test microphone</b>. The bar must move
       when you speak. Keep the audio output on <i>Windows default</i>. Press <b>Save</b>.</li>
-    <li><b>Events tab → Install game link</b>. If the game is running, restart it. This lets the droid
-      react to the battle, answer questions and find your wings.</li>
     <li>Press <b>LAUNCH!</b> (top right). The window switches to the active view and the droid says it's ready.</li>
-    <li>Start a mission, click into the game window and say <b>"R2, full throttle"</b>.</li>
+    <li>Start a mission and say <b>"R2, full throttle"</b>.</li>
   </ol>
   <div class="tip"><b>Tip</b>Speak naturally, at normal speed, and pause a moment after the droid's name
     the first few times. If a command isn't understood, the droid answers with a puzzled beep.</div>
-  <div class="warn"><b>Keys bound only to a joystick</b>Droid Commander presses keyboard keys. If a game
-    action is bound only to a joystick button, add a keyboard key for it in the game's control options
-    (the Commands tab marks such commands with ⚠).</div>
+  <div class="note"><b>Voice commands need a mission</b>Commands work through the game link while you fly a
+    mission. Outside a mission — or if the game link isn't installed — the droid answers with the error beep.</div>
+  <div class="tip"><b>After a Fate of the Galaxy update</b>Droid Commander compares the game's controls with the
+    ones it knew. If the mod added a control, or one your commands use now does something else, a window
+    offers the fix: add the new command, rename the old one to match, or switch it off.</div>
 </section>
 
 <!-- ============================================================ TALKING -->
@@ -190,8 +190,8 @@
   <ul>
     <li><b>Acknowledged</b> — a short positive chirp: the order was carried out.</li>
     <li><b>Not understood</b> — a puzzled beep: it heard you but didn't recognise the command.</li>
-    <li><b>Error</b> — a negative buzz: it understood, but couldn't do it (for example, the game isn't
-      the active window, or the key isn't found in your controls).</li>
+    <li><b>Error</b> — a negative buzz: it understood, but couldn't do it (for example, no mission is
+      running, or the game link isn't installed). The active view's log says why.</li>
   </ul>
 
   <h2>5 · Orders to your wingmen</h2>
@@ -205,13 +205,11 @@
   </table>
   <p>Available orders: <i>attack my target, disable my target, disarm my target, destroy subsystem,
     protect my target, ignore my target, form up, cover me, engage enemy, depart</i>.</p>
-  <p>With the game link installed, the droid picks the wing in the comm menu <b>by its name</b>, so it
-    always reaches the right wing. "Squad Gold" also finds a wing called "Gold Aurek" when it's the only
-    Gold wing (say "Squad Gold Besh" when there are two). Without the game link it presses the menu
-    numbers on the keyboard instead.</p>
-  <div class="note"><b>When the droid refuses</b>If the wing isn't in the mission, has no ships left, or
-    the game link isn't installed, the droid gives the error beep and presses nothing — so a wrong
-    order is never sent.</div>
+  <p>The droid picks the wing in the comm menu <b>by its name</b>, so it always reaches the right wing.
+    "Squad Gold" also finds a wing called "Gold Aurek" when it's the only Gold wing (say "Squad Gold Besh"
+    when there are two).</p>
+  <div class="note"><b>When the droid refuses</b>If the wing isn't in the mission, has no ships left or
+    refuses that order, the droid closes the menu and gives the error beep — so a wrong order is never sent.</div>
   <p>The names you can say are listed in the Droid tab under <b>Wing names</b> (Greek letters and colours
     by default). Add the names used by your favourite missions.</p>
 
@@ -250,22 +248,18 @@
 <!-- ============================================================ COMMANDS TAB -->
 <section class="chapter">
   <h2>8 · The Commands tab</h2>
-  <figure><img src="img/tab_commands.png" alt="Commands tab"><figcaption>The Commands tab on a first start: the ⚠ marks disappear once the game controls are found.</figcaption></figure>
-  <h3>Game controls</h3>
-  <p>Tells Droid Commander which keys your game uses. <b>Browse…</b> to the game's <code>data\players</code>
-    folder, then choose <b>Follow pilot</b> (recommended: it follows the controls of your pilot) or a
-    <b>Fixed preset</b>.</p>
+  <figure><img src="img/tab_commands.png" alt="Commands tab"><figcaption>The Commands tab: each command with the game control it works, named as Fate of the Galaxy names it.</figcaption></figure>
   <h3>Commands list</h3>
-  <p>Each line shows the command, who it's addressed to (<i>To</i>) and the key it presses. A ⚠ means the
-    key can't be found. <b>New</b>, <b>Duplicate</b> and <b>Delete</b> manage the list;
-    <b>Import from game…</b> creates commands for any control of the game in a few clicks.</p>
+  <p>Each line shows the command, who it's addressed to (<i>To</i>) and the <b>game control</b> it works, with
+    the name Fate of the Galaxy gives it ("Toggle S-foils"). Keys don't matter: the game link works the control
+    itself. <b>New</b>, <b>Duplicate</b> and <b>Delete</b> manage the list; <b>Import from game…</b> lists all
+    the game's controls (the mod's own first) and turns the ones you tick into commands, phrases included.</p>
   <h3>Editing a command</h3>
   <ul>
     <li><b>Name</b> and <b>To</b> (the droid or a callsign such as Wingmen), and <b>Enabled</b>.</li>
     <li><b>Phrases</b> — one per line, <i>without</i> the name you call. Add as many ways of saying it as you like.</li>
-    <li><b>Actions</b> — performed in order: a game action (uses your key for it), a fixed key, a mouse
-      button or a pause. <b>Repeat</b> presses it several times ("full power to engines" presses
-      <i>increase engine power</i> 6 times).</li>
+    <li><b>Actions</b> — performed in order: a game control, a pause or a question. <b>Repeat</b> works a
+      control several times ("full power to engines" works <i>increase engine power</i> 6 times).</li>
     <li><b>Response</b> — the droid's answer after the command; <b>Play</b> lets you hear it.</li>
     <li><b>Test in game</b> runs the command after 5 seconds, so you can switch to the game.</li>
   </ul>
@@ -297,12 +291,11 @@
   <h2>10 · The Events tab (game link)</h2>
   <figure><img src="img/tab_events.png" alt="Events tab"><figcaption>The Events tab before the game link is installed.</figcaption></figure>
   <h3>Game link</h3>
-  <p><b>Install game link</b> adds one small script to the mod. It tells Droid Commander what happens in the
-    game and, with <b>Press controls through the game link</b> (on by default), it presses your voice commands'
-    game controls from inside the game — exactly as if you pressed their key. This works whatever your keyboard
-    layout, also for controls bound only to a joystick, and without the game window needing the focus. When the
-    game link can't (no mission running, special commands), Droid Commander presses the keys as before.
-    Restart the game after installing or updating.</p>
+  <p><b>Install game link</b> adds one small script to the mod. It is how your voice commands reach the game:
+    it works their game controls from inside the game, exactly as if you pressed their key — whatever your
+    keyboard layout, also for controls bound only to a joystick. It also tells Droid Commander what happens in
+    the game. <b>Restart the game after installing or updating</b>: it loads the script when it starts (the tab
+    warns when the game still runs an older copy).</p>
   <ul>
     <li><b>Mod folder</b> — found automatically (for FotG 2, its <code>FG_Core</code> package). If it isn't found,
       press <b>Choose folder…</b> and pick the mod folder, e.g.
@@ -350,16 +343,16 @@
   <p><b>Minimize</b> sends it to the taskbar — it keeps listening. <b>Stop · Configure</b> stops listening and
     brings back the editor. Changes you save in the editor (names, commands, reactions, volume, voice) are
     picked up by a running droid by itself.</p>
-  <div class="tip"><b>Keep the game in front</b>The droid only presses keys while the game window is the
-    active one, so a command can never type into another program by mistake.</div>
+  <div class="tip"><b>No keys are typed</b>Commands are worked inside the game by the game link, so a command can
+    never type into another program by mistake, and the game doesn't need to be the active window.</div>
 
   <h2>13 · Multiplayer and fair play</h2>
   <p>The game link also works in multiplayer, in <b>fair-play mode</b>: the droid only knows what your HUD
     shows. For example, "are we clear?" counts only the enemies your radar can see — no stealth ships, nothing
     out of sensor range. Everything else it reports (hits, kills, hull, shields, energy, your target) is
     already on your HUD.</p>
-  <p>Voice commands press the same keys you would press. Ask your server admins whether they allow tools
-    like this before using it online.</p>
+  <p>Voice commands work the same controls you would press yourself. Ask your server admins whether they allow
+    tools like this before using it online.</p>
 </section>
 
 <!-- ============================================================ TROUBLESHOOTING -->
@@ -371,11 +364,12 @@
       check the microphone isn't muted in Windows.</td></tr>
     <tr><td>Many commands are "not understood"</td><td>Say the phrase exactly as written in the Commands tab, then add
       your own wording as an extra phrase. Use a headset so the game sound doesn't reach the microphone.</td></tr>
-    <tr><td>It understands but nothing happens in the game</td><td>Look for ⚠ in the Commands tab: the key isn't found
-      in your controls (often bound only to a joystick). Add a keyboard key in the game's control options.
-      Check the Game controls point to the right pilot.</td></tr>
-    <tr><td>Error beep: "the game is not in the foreground"</td><td>Click into the game window. If the game runs as
-      administrator, run Droid Commander as administrator too.</td></tr>
+    <tr><td>It understands but gives the error beep</td><td>The game link isn't answering: a mission must be running,
+      the game link installed (Events tab), and the game restarted after installing or updating it. The active
+      view's log says the reason.</td></tr>
+    <tr><td>A command does something unexpected</td><td>Fate of the Galaxy may use that control for something else
+      (for example the old "glide" is its <i>active pause</i>): check the <i>Game control</i> column in the
+      Commands tab.</td></tr>
     <tr><td>I can't hear the droid</td><td>Setup tab → output <i>Windows default</i> → ▶ Test. Check the master volume
       and the Windows volume mixer.</td></tr>
     <tr><td>The droid doesn't react to the game</td><td>Events tab: install or <b>Update game link</b>, restart the game,
@@ -400,7 +394,7 @@
     <tr><td>Toggle S-foils</td><td>open s-foils · close s-foils · lock s-foils</td></tr>
     <tr><td>Toggle targeting computer</td><td>targeting computer</td></tr>
     <tr><td>Stationary target mode</td><td>stationary target mode</td></tr>
-    <tr><td>Toggle glide</td><td>toggle glide · glide mode</td></tr>
+    <tr><td>Active pause</td><td>active pause · pause the game</td></tr>
     <tr><td>Target next / previous</td><td>next target · previous target</td></tr>
     <tr><td>Target nearest enemy</td><td>target nearest enemy · nearest enemy</td></tr>
     <tr><td>Target attacker</td><td>who is shooting me · target my attacker</td></tr>

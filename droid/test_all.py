@@ -12,7 +12,8 @@ import tkinter as tk
 from tkinter import ttk
 
 from . import theme
-from .luacmd import LuaControls, can_run
+from .executor import CommandError, check_command
+from .luacmd import LuaControls
 from .squad import SQUAD_SHORTCUTS, is_squad_order
 
 COUNTDOWN = 5          # seconds to switch to the game window (FSO pauses when it loses focus)
@@ -23,15 +24,17 @@ NOT_IN_PRESS_ALL = {"END_MISSION": "would end the mission", "WARP_MESSAGE": "win
 
 
 def kind_of(cmd):
-    """('question'|'order'|'controls'|'keys', [control names])."""
+    """('question'|'order'|'controls'|'invalid', [control names])."""
     actions = cmd.get("actions", [])
     if any("ask" in a for a in actions):
         return "question", []
+    try:
+        check_command(cmd)
+    except CommandError:
+        return "invalid", []
     if is_squad_order(cmd):
         return "order", [next(a["bind"] for a in actions if a.get("bind") in SQUAD_SHORTCUTS)]
-    if can_run(cmd):
-        return "controls", [a["bind"] for a in actions]
-    return "keys", []
+    return "controls", [a["bind"] for a in actions if "bind" in a]
 
 
 class TestAllDialog(tk.Toplevel):
@@ -42,7 +45,7 @@ class TestAllDialog(tk.Toplevel):
         self.configure(bg=theme.C["bg"])
         self.geometry("980x640")
         self.transient(editor.root)
-        self.lua = LuaControls(lambda: editor.bindings.players_dir)
+        self.lua = LuaControls(lambda: editor.players_dir)
         self.results = queue.Queue()
         self.stop_flag = threading.Event()
         self.running = False
@@ -88,7 +91,8 @@ class TestAllDialog(tk.Toplevel):
         self.rows = {}
         for i, cmd in enumerate(self.commands):
             kind, names = kind_of(cmd)
-            text = {"question": "question (no controls)", "keys": "fixed keys / mouse (keyboard only)"}.get(kind, "")
+            text = {"question": "question (no controls)",
+                    "invalid": "⚠ needs fixing in the Commands tab"}.get(kind, "")
             self.rows[i] = self.tree.insert("", "end", values=(cmd["name"], ", ".join(names), text),
                                             tags=("info",) if text else ())
         self.summary = ttk.Label(self, text="", padding=(14, 0, 14, 10))
@@ -123,7 +127,7 @@ class TestAllDialog(tk.Toplevel):
             put(("status", f"Switch to the game… {n}"))
             time.sleep(1)
         from . import gamelink
-        if gamelink.outdated_in_game(self.ed.bindings.players_dir):
+        if gamelink.outdated_in_game(self.ed.players_dir):
             put(("done", "⚠ The game is still running an older game link (it was updated while the game "
                          "was open). Close and restart FreeSpace Open, then start a mission and try again."))
             return
@@ -151,11 +155,11 @@ class TestAllDialog(tk.Toplevel):
             missing = [n for n in cmd_names if n in unknown]
             if missing:
                 bad += 1
-                put(("row", i, f"✗ unknown to the game: {', '.join(missing)} (will use keys)", "bad"))
+                put(("row", i, f"✗ unknown to the game: {', '.join(missing)}", "bad"))
             else:
                 good += 1
                 put(("row", i, "✓ the game knows it", "ok"))
-        put(("done", f"{good} command(s) can go through the game link, {bad} can't."))
+        put(("done", f"{good} command(s) work with this game, {bad} don't."))
 
     def do_press(self, put, include_orders):
         good = bad = skipped = 0
@@ -168,7 +172,7 @@ class TestAllDialog(tk.Toplevel):
                 put(("row", i, f"skipped ({risky}: test it by hand)", "info"))
                 skipped += 1
                 continue
-            if kind in ("question", "keys") or (kind == "order" and not include_orders):
+            if kind in ("question", "invalid") or (kind == "order" and not include_orders):
                 if kind == "order":
                     put(("row", i, "skipped (wingman order)", "info"))
                 skipped += 1

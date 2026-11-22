@@ -11,20 +11,19 @@ import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
-from .bindings import BindingStore, detect_players_dir, list_pilots, list_presets, preset_path
-from .gamelink import find_mod_dirs
+from . import gamelink
+from .controls import Catalog
 from .paths import resolve_model
-from .executor import CommandError, Executor
-from .keymap import FSO_SCANCODES, MOUSE_BUTTONS, parse_key
+from .executor import CommandError, Executor, check_command
+from .luacmd import LuaControls
 from .phrases import DROID, PhraseBook, command_call, missing_words, normalize
 from .sounds import AUDIO_EXT, SoundBank
-from .triggers import key_down, vk_to_name
 from .voice_editor import MOOD_LABELS, VoiceTab
 from .droid_tab import DroidTab
 from .events_tab import EventsTab
 from .setup_tab import SetupTab
 from .squad import DEFAULT_WING_NAMES, is_squad_order, wing_label
-from .game_controls import GameControlsPanel, ImportDialog, phrase_from_label
+from .game_controls import ImportDialog, phrases_from_label
 from .gamelink import QUESTIONS
 from .settings_io import update_settings
 from . import theme
@@ -33,36 +32,14 @@ DEFAULT_MOODS = ["ack", "error", "unknown", "ready", "chatter"]
 CONFIGURE_SUBTITLE = "Astromech control interface · configure"
 ACTIVE_SUBTITLE = "Active · listening for your orders"
 KEY_ORDER = ["name", "enabled", "phrases", "actions", "sound"]
-ACTION_TYPES = [("bind", "Game action"), ("key", "Key"), ("mouse", "Mouse button"), ("wait", "Wait"),
-                ("ask", "Question")]
+ACTION_TYPES = [("bind", "Game control"), ("wait", "Wait"), ("ask", "Question")]
 TYPE_LABEL = dict(ACTION_TYPES)
-# Shift/Ctrl/Alt (generic, left, right) and the Windows keys: captured as modifiers, not keys
-MODIFIER_VKS = {0x10, 0x11, 0x12, 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0x5B, 0x5C}
-VK_SHIFT, VK_CONTROL, VK_MENU = 0x10, 0x11, 0x12
 
 
 # ----------------------------------------------------------------- helpers
 def load_json(path):
     with open(path, "r", encoding="utf-8-sig") as f:
         return json.load(f)
-
-
-def load_control_labels(path):
-    """bind -> human readable label, parsed from a mod's Controlconfigdefaults.tbl."""
-    labels = {}
-    if not path or not os.path.exists(path):
-        return labels
-    current = None
-    with open(path, "r", encoding="utf-8", errors="replace") as f:
-        for line in f:
-            m = re.match(r"\s*\$Bind:\s*(\w+)", line)
-            if m:
-                current = m.group(1)
-                continue
-            m = re.match(r'\s*\$Has XStr:.*?;\s*"([^"]+)"', line)
-            if m and current:
-                labels[current] = m.group(1)
-    return labels
 
 
 def action_type(action):
@@ -115,10 +92,10 @@ class Modal(tk.Toplevel):
 
 # ---------------------------------------------------------------- dialogs
 class BindPicker(Modal):
-    """Choose one of the game actions from the FSO preset."""
+    """Choose one of the game's controls (named as the mod names them)."""
 
     def __init__(self, parent, editor, current=""):
-        super().__init__(parent, "Choose a game action")
+        super().__init__(parent, "Choose a game control")
         self.resizable(True, True)
         self.editor = editor
         self.filter = tk.StringVar()
@@ -130,8 +107,8 @@ class BindPicker(Modal):
         entry.grid(row=0, column=1, sticky="ew", padx=(6, 0))
         cols = ("label", "bind", "input", "status")
         self.tree = ttk.Treeview(frm, columns=cols, show="headings", height=18, selectmode="browse")
-        for c, text, w in (("label", "Action", 230), ("bind", "FSO name", 230),
-                           ("input", "Bound to", 220), ("status", "Voice control", 120)):
+        for c, text, w in (("label", "Game control", 260), ("bind", "FSO name", 250),
+                           ("input", "Named by", 150), ("status", "Status", 120)):
             self.tree.heading(c, text=text)
             self.tree.column(c, width=w, anchor="w")
         self.tree.tag_configure("bad", foreground=theme.C["off"])
@@ -154,17 +131,18 @@ class BindPicker(Modal):
 
     def fill(self):
         f = self.filter.get().lower().strip()
-        b = self.editor.bindings
+        cat = self.editor.catalog
         self.tree.delete(*self.tree.get_children())
         rows = []
-        for bind in b.raw:
-            label = self.editor.labels.get(bind, "")
+        for bind in cat.names():
+            label = cat.label(bind)
             if f and f not in bind.lower() and f not in label.lower():
                 continue
-            ok = b.resolve(bind) is not None
-            rows.append((label or bind.replace("_", " ").title(), bind, b.describe(bind),
-                         "OK" if ok else "joystick only" if "JOY" in b.describe(bind) else "not bound", ok))
-        for label, bind, inp, status, ok in sorted(rows, key=lambda r: r[0].lower()):
+            ok = not cat.disabled(bind)
+            rows.append((label, bind, "Fate of the Galaxy" if cat.from_mod(bind) else "FreeSpace Open",
+                         "OK" if ok else "off in this mod", ok))
+        for label, bind, inp, status, ok in sorted(rows, key=lambda r: (r[2] != "Fate of the Galaxy",
+                                                                         r[0].lower())):
             self.tree.insert("", "end", iid=bind, values=(label, bind, inp, status),
                              tags=() if ok else ("bad",))
         if self.current and self.tree.exists(self.current):
@@ -178,69 +156,6 @@ class BindPicker(Modal):
             self.destroy()
 
 
-class KeyCapture(Modal):
-    """Press a key (combination) to capture it, or pick it from the list."""
-
-    def __init__(self, parent, current=""):
-        super().__init__(parent, "Capture a key")
-        frm = ttk.Frame(self, padding=14)
-        frm.pack(fill="both", expand=True)
-        ttk.Label(frm, text="Press the key now (hold Shift / Alt / Ctrl for a combination).").pack(anchor="w")
-        self.shown = tk.StringVar(value=current or "—")
-        ttk.Label(frm, textvariable=self.shown, style="Big.TLabel").pack(pady=12)
-        man = ttk.LabelFrame(frm, text="…or choose it manually", padding=8)
-        man.pack(fill="x")
-        self.shift, self.alt, self.ctrl = tk.BooleanVar(), tk.BooleanVar(), tk.BooleanVar()
-        self.key = tk.StringVar()
-        if current:
-            parts = current.upper().split("-")
-            self.key.set(parts[-1])
-            self.shift.set("SHIFT" in parts[:-1])
-            self.alt.set("ALT" in parts[:-1])
-            self.ctrl.set("CTRL" in parts[:-1])
-        for text, var in (("Shift", self.shift), ("Alt", self.alt), ("Ctrl", self.ctrl)):
-            ttk.Checkbutton(man, text=text, variable=var, takefocus=0,
-                            command=self.from_manual).pack(side="left", padx=(0, 6))
-        combo = ttk.Combobox(man, textvariable=self.key, values=sorted(FSO_SCANCODES),
-                             state="readonly", width=18, takefocus=0)
-        combo.pack(side="left", padx=6)
-        combo.bind("<<ComboboxSelected>>", lambda e: (self.from_manual(), self.focus_set()))
-        btns = ttk.Frame(frm)
-        btns.pack(anchor="e", pady=(12, 0))
-        ttk.Button(btns, text="OK", command=self.ok, takefocus=0).pack(side="left", padx=4)
-        ttk.Button(btns, text="Cancel", command=self.destroy, takefocus=0).pack(side="left")
-        self.bind("<KeyPress>", self.on_key)
-        self.after(50, self.focus_force)
-
-    def compose(self):
-        mods = [m for m, v in (("CTRL", self.ctrl), ("ALT", self.alt), ("SHIFT", self.shift)) if v.get()]
-        return "-".join(mods + [self.key.get()]) if self.key.get() else ""
-
-    def from_manual(self):
-        self.shown.set(self.compose() or "—")
-
-    def on_key(self, event):
-        vk = event.keycode
-        if vk in MODIFIER_VKS:
-            return "break"
-        name = vk_to_name(vk)
-        if not name:
-            self.shown.set("(key not supported)")
-            return "break"
-        self.key.set(name)
-        self.shift.set(key_down(VK_SHIFT))
-        self.alt.set(key_down(VK_MENU))
-        self.ctrl.set(key_down(VK_CONTROL))
-        self.from_manual()
-        return "break"
-
-    def ok(self):
-        value = self.compose()
-        if value:
-            self.result = value
-            self.destroy()
-
-
 class ActionDialog(Modal):
     """Create or edit one action of a command."""
 
@@ -250,12 +165,9 @@ class ActionDialog(Modal):
         a = dict(action or {"bind": ""})
         self.type = tk.StringVar(value=action_type(a) or "bind")
         self.bind_var = tk.StringVar(value=a.get("bind", ""))
-        self.key_var = tk.StringVar(value=a.get("key", ""))
-        self.mouse_var = tk.StringVar(value=a.get("mouse", "LEFT_BUTTON"))
         self.wait_var = tk.StringVar(value=str(a.get("wait", 200)))
         self.ask_var = tk.StringVar(value=QUESTIONS.get(a.get("ask", "status"), QUESTIONS["status"])[0])
         self.repeat_var = tk.StringVar(value=str(a.get("repeat", 1)))
-        self.hold_var = tk.StringVar(value=str(a.get("hold_ms", "")))
         self.info = tk.StringVar()
 
         frm = ttk.Frame(self, padding=12)
@@ -273,12 +185,6 @@ class ActionDialog(Modal):
         self.bind_label = tk.StringVar()
         ttk.Entry(f, textvariable=self.bind_label, state="readonly", width=44).pack(side="left")
         ttk.Button(f, text="Choose…", command=self.choose_bind).pack(side="left", padx=6)
-        f = self.frames["key"] = ttk.Frame(self.box)
-        ttk.Entry(f, textvariable=self.key_var, width=30).pack(side="left")
-        ttk.Button(f, text="Capture…", command=self.capture_key).pack(side="left", padx=6)
-        f = self.frames["mouse"] = ttk.Frame(self.box)
-        ttk.Combobox(f, textvariable=self.mouse_var, values=MOUSE_BUTTONS,
-                     state="readonly", width=20).pack(side="left")
         f = self.frames["wait"] = ttk.Frame(self.box)
         ttk.Spinbox(f, from_=10, to=10000, increment=50, textvariable=self.wait_var,
                     width=8).pack(side="left")
@@ -293,11 +199,6 @@ class ActionDialog(Modal):
         ttk.Spinbox(self.opts, from_=1, to=50, textvariable=self.repeat_var, width=6).grid(
             row=0, column=1, sticky="w", padx=6)
         ttk.Label(self.opts, text="times").grid(row=0, column=2, sticky="w")
-        ttk.Label(self.opts, text="Hold for:").grid(row=1, column=0, sticky="w", pady=(6, 0))
-        ttk.Entry(self.opts, textvariable=self.hold_var, width=8).grid(
-            row=1, column=1, sticky="w", padx=6, pady=(6, 0))
-        ttk.Label(self.opts, text=f"ms (empty = default {editor.executor.hold_ms} ms)").grid(
-            row=1, column=2, sticky="w", pady=(6, 0))
 
         ttk.Label(frm, textvariable=self.info, style="Hint.TLabel", wraplength=420).pack(
             anchor="w", pady=(10, 0))
@@ -306,7 +207,6 @@ class ActionDialog(Modal):
         ttk.Button(btns, text="OK", command=self.ok).pack(side="left", padx=4)
         ttk.Button(btns, text="Cancel", command=self.destroy).pack(side="left")
         self.bind("<Escape>", lambda e: self.destroy())
-        self.key_var.trace_add("write", lambda *_: self.update_info())
         self.on_type()
         if action is None:
             self.after(80, self.choose_bind)
@@ -328,20 +228,12 @@ class ActionDialog(Modal):
             b = self.bind_var.get()
             self.bind_label.set(e.bind_title(b) if b else "")
             if not b:
-                self.info.set("Choose the game action to perform.")
+                self.info.set("Choose the game control to press.")
+            elif e.catalog.disabled(b):
+                self.info.set("⚠ This control is switched off in the installed mod: it does nothing.")
             else:
-                r = e.bindings.resolve(b)
-                self.info.set(f"Presses {r.describe()} (from your game preset)." if r else
-                              f"⚠ Not usable by voice: bound to {e.bindings.describe(b)}. "
-                              "Add a keyboard key for it in the game's control options.")
-        elif t == "key":
-            try:
-                parse_key(self.key_var.get())
-                self.info.set("Presses this key directly, whatever the game preset says.")
-            except ValueError as ex:
-                self.info.set(f"⚠ {ex}" if self.key_var.get() else "Capture a key.")
-        elif t == "mouse":
-            self.info.set("Clicks a mouse button.")
+                self.info.set("The game link presses this control inside the game, as if you pressed "
+                              "its key (whatever key, joystick button or none it has).")
         elif t == "ask":
             self.info.set("The droid answers with a positive or negative sound, judged on your ship's "
                           "state (needs the game link, Events tab). No key is pressed.")
@@ -357,24 +249,13 @@ class ActionDialog(Modal):
             self.bind_var.set(r)
             self.update_info()
 
-    def capture_key(self):
-        r = KeyCapture(self, self.key_var.get()).show()
-        self.grab_set()
-        if r:
-            self.key_var.set(r)
-
     def ok(self):
         t = self.type.get()
         try:
             if t == "bind":
                 if not self.bind_var.get():
-                    raise ValueError("choose a game action")
+                    raise ValueError("choose a game control")
                 action = {"bind": self.bind_var.get()}
-            elif t == "key":
-                parse_key(self.key_var.get())
-                action = {"key": self.key_var.get().strip().upper()}
-            elif t == "mouse":
-                action = {"mouse": self.mouse_var.get()}
             elif t == "ask":
                 q = next(k for k, v in QUESTIONS.items() if v[0] == self.ask_var.get())
                 self.result = {"ask": q}
@@ -392,11 +273,6 @@ class ActionDialog(Modal):
                 raise ValueError("repeat must be at least 1")
             if repeat > 1:
                 action["repeat"] = repeat
-            hold = self.hold_var.get().strip()
-            if hold:
-                if int(hold) <= 0:
-                    raise ValueError("hold time must be positive")
-                action["hold_ms"] = int(hold)
         except ValueError as ex:
             messagebox.showerror("Invalid action", str(ex), parent=self)
             return
@@ -413,19 +289,16 @@ class Editor:
         self.settings = load_json(settings_path)
         self.first_run_note = None
         self.first_run_setup()
-        self.bindings = BindingStore.from_settings(self.settings)
-        self.executor = Executor(self.bindings, self.settings.get("game", {}))
+        gamelink.MANUAL_MOD_DIR = (self.settings.get("game_link") or {}).get("mod_dir") or None
+        self.players_dir = gamelink.game_players_dir(self.settings)
+        self.catalog = Catalog(self.mod_dir())
+        self.executor = Executor(LuaControls(lambda: self.players_dir))
         snd = self.settings.get("sound", {})
         self.sound_folder = snd.get("folder", "sounds")
         self.voices_path = snd.get("voices_file", "config/voices.json")
         self.sounds = SoundBank(self.sound_folder, snd.get("volume", 0.8),
                                 snd.get("output_device"), snd.get("backend", "winsound"),
                                 self.voices_path)
-        labels_file = self.settings.get("control_labels_file")
-        if not labels_file or not os.path.exists(labels_file):     # use the installed mod's own table
-            mods = find_mod_dirs(self.bindings.players_dir) if self.bindings.players_dir else []
-            labels_file = os.path.join(mods[0], "data", "tables", "Controlconfigdefaults.tbl") if mods else ""
-        self.labels = load_control_labels(labels_file)
         self.model_path = resolve_model(self.settings.get("model_path", "models/vosk-model-small-en-us-0.15"))
         self.wake_words = self.settings["droid"]["wake_words"]
         self.callsigns = self.settings.get("callsigns") or {}
@@ -449,29 +322,41 @@ class Editor:
             self.select(0)
         self.root.after(300, self.run_vocab)
         if self.first_run_note:
-            if not self.bindings.players_dir:
-                self.tabbar.select(1)           # Commands tab: Game controls → Browse…
+            self.tabbar.select(3)               # Events tab: install the game link / choose the mod
             self.root.after(1500, lambda: self.set_status(self.first_run_note))
+        self.root.after(800, self.check_controls_changed)
 
     def first_run_setup(self):
-        """No game folder configured yet: look for FreeSpace Open and follow its pilot's preset."""
+        """No game folder known yet: look for FreeSpace Open and point to the game link."""
         s = self.settings
-        if s.get("fso_players_dir") or (s.get("bindings_file") and os.path.exists(s["bindings_file"])):
+        if s.get("fso_players_dir") or (s.get("game_link") or {}).get("mod_dir"):
             return
-        players = detect_players_dir()
-        if not players:
-            self.first_run_note = ("Welcome! FreeSpace Open was not found automatically: in the Commands "
-                                   "tab, use Game controls → Browse… to choose its data\\players folder.")
-            return
-        pilots = [(p, pr) for p, pr in list_pilots(players) if pr]
-        presets = list_presets(players)
-        pilot, preset = (pilots[0] if pilots else (None, presets[0] if presets else None))
-        updates = {"fso_players_dir": players, "pilot": pilot, "follow_pilot": bool(pilot),
-                   "bindings_file": preset_path(players, preset) if preset else ""}
-        update_settings(self.settings_path, updates)
-        s.update(updates)
-        self.first_run_note = (f"Welcome! Found FreeSpace Open in {players}"
-                               + (f" — following pilot {pilot}." if pilot else "."))
+        players = gamelink.detect_players_dir()
+        if players:
+            update_settings(self.settings_path, {"fso_players_dir": players})
+            s["fso_players_dir"] = players
+            self.first_run_note = ("Welcome! Found FreeSpace Open. Now install the game link (Events tab): "
+                                   "your commands are pressed inside the game through it.")
+        else:
+            self.first_run_note = ("Welcome! FreeSpace Open was not found automatically: in the Events tab, "
+                                   "press “Choose folder…” and pick the Fate of the Galaxy mod folder.")
+
+    def mod_dir(self):
+        """The mod folder (chosen in the Events tab, or found automatically)."""
+        return gamelink.mod_dir(self.players_dir, gamelink.MANUAL_MOD_DIR)
+
+    def on_game_folder_changed(self):
+        """The Events tab chose another mod folder: reload the game's controls."""
+        self.players_dir = gamelink.game_players_dir(load_json(self.settings_path))
+        self.catalog = Catalog(self.mod_dir())
+        self.update_rows()
+        if self.current is not None:
+            self.refresh_actions(select=self.selected_action())
+        self.check_controls_changed()
+
+    def check_controls_changed(self):
+        from .controls_watch import check_controls
+        check_controls(self)
 
     # ------------------------------------------------------------- data
     def _load_file(self):
@@ -480,8 +365,7 @@ class Editor:
         self.extra = {k: v for k, v in data.items() if k != "commands"}
 
     def bind_title(self, bind):
-        label = self.labels.get(bind)
-        return f"{label}  ({bind})" if label else bind
+        return f"{self.catalog.label(bind)}  ({bind})"
 
     def cmd(self):
         return self.commands[self.current] if self.current is not None else None
@@ -514,9 +398,12 @@ class Editor:
         if not c.get("phrases"):
             out.append("no phrases")
         try:
-            self.executor.plan(c)
+            check_command(c)
         except CommandError as e:
             out.append(str(e))
+        off = [a["bind"] for a in c.get("actions", []) if "bind" in a and self.catalog.disabled(a["bind"])]
+        if off:
+            out.append("switched off in the installed mod: " + ", ".join(self.catalog.label(b) for b in off))
         unknown = self.unknown_words(c)
         if unknown:
             out.append("words unknown to the speech model: " + ", ".join(unknown))
@@ -529,16 +416,19 @@ class Editor:
         return out
 
     def summary(self, c):
+        """What the command does in the game, e.g. 'Toggle S-foils' or 'Increase Engine ×6'."""
         try:
-            steps = self.executor.plan(c)
+            check_command(c)
         except CommandError:
             return "⚠"
-        keys = [v.text if k == "key" else f"MOUSE {v}" for k, v, _ in steps if k != "wait"]
-        if not keys:
+        parts = []
+        for a in c.get("actions", []):
+            if "bind" in a:
+                n = int(a.get("repeat", 1))
+                parts.append(self.catalog.label(a["bind"]) + (f" ×{n}" if n > 1 else ""))
+        if not parts:
             return "? question" if any("ask" in a for a in c.get("actions", [])) else ""
-        if len(set(keys)) == 1:
-            return keys[0] + (f" ×{len(keys)}" if len(keys) > 1 else "")
-        return " + ".join(keys)
+        return " + ".join(parts)
 
     # --------------------------------------------------------------- UI
     def _build(self):
@@ -582,8 +472,6 @@ class Editor:
         r.bind("<Control-Shift-Tab>", lambda e: tabs.step(-1))
         r.bind("<Control-ISO_Left_Tab>", lambda e: tabs.step(-1))
 
-        self.game_panel = GameControlsPanel(cmd_tab, self)
-        self.game_panel.pack(fill="x", padx=4, pady=(6, 0))
         paned = ttk.PanedWindow(cmd_tab, orient="horizontal")
         paned.pack(fill="both", expand=True, padx=4, pady=(8, 0))
         left = ttk.Frame(paned)
@@ -603,10 +491,10 @@ class Editor:
         self.cmd_tree = ttk.Treeview(lf, columns=("name", "to", "keys"), show="headings", selectmode="browse")
         self.cmd_tree.heading("name", text="Command")
         self.cmd_tree.heading("to", text="To")
-        self.cmd_tree.heading("keys", text="Presses")
-        self.cmd_tree.column("name", width=230)
-        self.cmd_tree.column("to", width=80)
-        self.cmd_tree.column("keys", width=140)
+        self.cmd_tree.heading("keys", text="Game control")
+        self.cmd_tree.column("name", width=220)
+        self.cmd_tree.column("to", width=70)
+        self.cmd_tree.column("keys", width=170)
         self.cmd_tree.tag_configure("warn", foreground=C["warn"])
         self.cmd_tree.tag_configure("off", foreground=C["off"])
         sb = ttk.Scrollbar(lf, orient="vertical", command=self.cmd_tree.yview)
@@ -658,10 +546,10 @@ class Editor:
         box.pack(fill="both", expand=True, pady=(8, 0))
         af = ttk.Frame(box)
         af.pack(fill="both", expand=True)
-        cols = ("type", "value", "result", "repeat", "hold")
+        cols = ("type", "value", "result", "repeat")
         self.act_tree = ttk.Treeview(af, columns=cols, show="headings", height=3, selectmode="browse")
-        for c, text, w in (("type", "Type", 100), ("value", "Action", 250), ("result", "Presses", 150),
-                           ("repeat", "Repeat", 60), ("hold", "Hold ms", 70)):
+        for c, text, w in (("type", "Type", 100), ("value", "Action", 260), ("result", "FSO name", 210),
+                           ("repeat", "Repeat", 60)):
             self.act_tree.heading(c, text=text)
             self.act_tree.column(c, width=w, anchor="w")
         self.act_tree.tag_configure("warn", foreground=C["warn"])
@@ -933,18 +821,14 @@ class Editor:
         t = action_type(a)
         result, warn = "", False
         if t == "bind":
-            value = self.bind_title(a["bind"])
-            r = self.bindings.resolve(a["bind"])
-            result = r.describe() if r else "⚠ " + self.bindings.describe(a["bind"])
-            warn = r is None
-        elif t == "key":
-            value = a["key"]
-            try:
-                result = parse_key(a["key"]).text
-            except ValueError:
-                result, warn = "⚠ invalid key", True
-        elif t == "mouse":
-            value = result = a["mouse"]
+            value = self.catalog.label(a["bind"])
+            result = a["bind"]
+            if not self.catalog.known(a["bind"]):
+                result, warn = "⚠ not a FreeSpace Open control", True
+            elif self.catalog.disabled(a["bind"]):
+                result, warn = "⚠ switched off in this mod", True
+        elif "key" in a or "mouse" in a:
+            value, result, warn = a.get("key") or a.get("mouse"), "⚠ keys aren't used any more", True
         elif t == "wait":
             value = f"{a['wait']} ms"
         elif t == "ask":
@@ -953,8 +837,7 @@ class Editor:
         else:
             value, warn = json.dumps(a), True
         repeat = "" if t in ("wait", "ask") else str(a.get("repeat", 1))
-        hold = "" if t in ("wait", "ask") else str(a.get("hold_ms", ""))
-        return (TYPE_LABEL.get(t, "?"), value, result, repeat, hold), warn
+        return (TYPE_LABEL.get(t, "Old key action"), value, result, repeat), warn
 
     def refresh_actions(self, select=None):
         self.act_tree.delete(*self.act_tree.get_children())
@@ -1020,29 +903,29 @@ class Editor:
         if c is None:
             return
         cmd = copy.deepcopy(c)
-        from .luacmd import LuaControls, can_run
         try:
-            gl = load_json(self.settings_path).get("game_link") or {}     # the Events tab may have changed it
-        except (OSError, ValueError):
-            gl = {}
-        if gl.get("press_controls", True):
-            self.executor.lua = LuaControls(lambda: self.bindings.players_dir)
-        else:
-            self.executor.lua = None
-        try:
-            self.executor.plan(cmd)
+            check_command(cmd)
         except CommandError as e:
-            if not (self.executor.lua and can_run(cmd)):    # the game link may still press it
-                messagebox.showerror("Can't test", str(e), parent=self.root)
-                return
+            messagebox.showerror("Can't test", str(e), parent=self.root)
+            return
+        if any("ask" in a for a in cmd.get("actions", [])):
+            messagebox.showinfo("Test", "A question presses nothing: ask it by voice during a mission.",
+                                parent=self.root)
+            return
         self.test_btn.state(["disabled"])
         outcome = queue.Queue()
 
         def run():    # background thread: never touch tkinter here
             try:
-                self.executor.execute(cmd)
-                via = " (via game link)" if self.executor.last_route == "game link" else " (keys)"
-                outcome.put(("✓ Done" + via, "Ok.TLabel", cmd.get("sound", "ack")))
+                if is_squad_order(cmd):                       # wingman order: to all fighters
+                    from .squad import SQUAD_SHORTCUTS
+                    shortcut = next(a["bind"] for a in cmd["actions"] if a.get("bind") in SQUAD_SHORTCUTS)
+                    ok, note = self.executor.lua.send_order(shortcut, None)
+                    if not ok:
+                        raise CommandError(note)
+                else:
+                    self.executor.execute(cmd)
+                outcome.put(("✓ Done in game", "Ok.TLabel", cmd.get("sound", "ack")))
             except CommandError as e:
                 outcome.put((f"⚠ {e}", "Warn.TLabel", "error"))
 
@@ -1158,7 +1041,7 @@ class Editor:
         if self.dirty and not messagebox.askyesno(
                 "Reload", "Discard your unsaved changes and reload from disk?", parent=self.root):
             return
-        self.bindings.reload()
+        self.catalog = Catalog(self.mod_dir())
         self._load_file()
         self.current = 0 if self.commands else None
         self.dirty = False
@@ -1169,16 +1052,8 @@ class Editor:
         self.run_vocab()
         self.set_status("Reloaded from disk.")
 
-    def on_bindings_changed(self):
-        """The game preset changed: every 'Presses' column and warning may change."""
-        self.update_rows()
-        if self.current is not None:
-            self.refresh_actions(select=self.selected_action())
-
-    def import_from_game(self):
-        picked = ImportDialog(self.root, self).show()
-        if not picked:
-            return
+    def add_control_commands(self, picked):
+        """Add one command per (control, label), with phrases made from the label."""
         names = {c.get("name") for c in self.commands}
         first = len(self.commands)
         for bind, label in picked:
@@ -1186,7 +1061,7 @@ class Editor:
             while name in names:
                 name, k = f"{label} ({k})", k + 1
             names.add(name)
-            self.commands.append({"name": name, "phrases": [phrase_from_label(label)],
+            self.commands.append({"name": name, "phrases": phrases_from_label(label),
                                   "actions": [{"bind": bind}], "sound": "ack"})
         self.search.set("")
         self.current = first
@@ -1194,8 +1069,13 @@ class Editor:
         self.select(first)
         self.changed()
         self.run_vocab()
-        self.set_status(f"Added {len(picked)} command(s) from {self.bindings.preset_name}. "
-                        "Check their phrases, then Save.")
+
+    def import_from_game(self):
+        picked = ImportDialog(self.root, self).show()
+        if not picked:
+            return
+        self.add_control_commands(picked)
+        self.set_status(f"Added {len(picked)} command(s). Check their phrases, then Save.")
 
     def on_droid_saved(self, name, wake_words, callsigns=None, wing_names=None):
         self.wake_words = wake_words

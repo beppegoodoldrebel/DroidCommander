@@ -21,7 +21,7 @@
 DroidLink = {
 	-- raise it whenever this script changes: Droid Commander warns when the game still runs an
 	-- older copy (FSO loads scripts only when it starts)
-	version = 8,
+	version = 9,
 	file = "droid_link.log",
 	state_file = "droid_state.txt",   -- snapshot of your ship, rewritten every second
 	next_state = 0,
@@ -240,7 +240,9 @@ function DroidLink:runCommand(seq, body)
 	local actions, missing, used = {}, {}, {}
 	for name, count in body:gmatch("([%w_]+):(%d+)") do
 		local n, byname = self:controlNumber(name)
-		if n == nil then
+		if name == "WAIT" then                       -- a pause between controls, in ms
+			actions[#actions + 1] = {wait = tonumber(count) / 1000}
+		elseif n == nil then
 			missing[#missing + 1] = name
 		else
 			actions[#actions + 1] = {num = n, byname = byname, name = name, count = tonumber(count)}
@@ -281,6 +283,13 @@ function DroidLink:pressControls()
 	local a = self.queue[1]
 	if a == nil then                      -- all done
 		self:setButtonMode(false)
+		return
+	end
+	if a.wait ~= nil then                 -- a pause (mission time: it stops while the game is paused)
+		local now = 0
+		pcall(function() now = mn.getMissionTime() or 0 end)
+		if a.until_t == nil then a.until_t = now + a.wait end
+		if now >= a.until_t then table.remove(self.queue, 1) end
 		return
 	end
 	if not self.active then self:setButtonMode(true) end

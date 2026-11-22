@@ -1,4 +1,4 @@
-"""Main voice loop: microphone -> Vosk -> command -> keys + droid sound."""
+"""Main voice loop: microphone -> Vosk -> command -> game controls (via the game link) + droid sound."""
 
 import collections
 import json
@@ -7,15 +7,13 @@ import queue
 import threading
 import time
 
-from .bindings import BindingStore
-from .executor import Executor, CommandError
+from .executor import Executor, CommandError, check_command
 from .paths import resolve_model
 from . import gamelink
 from .gamelink import GameLink, Reactions, answer, event_config, read_state
 from .phrases import PhraseBook, missing_words, normalize, to_json
 from .sounds import SoundBank, find_device
-from .squad import (DEFAULT_WING_NAMES, SQUAD_SHORTCUTS, WING_PREFIX, is_squad_order,
-                    recipient_actions, wing_label)
+from .squad import DEFAULT_WING_NAMES, SQUAD_SHORTCUTS, WING_PREFIX, is_squad_order, wing_label
 from .triggers import PushToTalk
 
 SAMPLE_RATE = 16000
@@ -41,13 +39,11 @@ class DroidApp:
         self._commands_mtime = os.path.getmtime(commands_path) if commands_path else None
         self.settings_path = settings_path
         self._settings_mtime = os.path.getmtime(settings_path) if settings_path else None
-        self.bindings = BindingStore.from_settings(settings)
-        self.executor = Executor(self.bindings, settings.get("game", {}))
         gl = settings.get("game_link") or {}
         gamelink.MANUAL_MOD_DIR = gl.get("mod_dir") or None
-        if gl.get("press_controls", True):
-            from .luacmd import LuaControls       # press controls inside the game, keys as fallback
-            self.executor.lua = LuaControls(lambda: self.bindings.players_dir)
+        self.players_dir = gamelink.game_players_dir(settings)     # FSO's user folder (events, state)
+        from .luacmd import LuaControls                            # controls are pressed inside the game
+        self.executor = Executor(LuaControls(lambda: self.players_dir))
         snd = settings.get("sound", {})
         self.sounds = SoundBank(snd.get("folder", "sounds"), snd.get("volume", 0.8),
                                 snd.get("output_device"), snd.get("backend", "winsound"),
@@ -94,11 +90,11 @@ class DroidApp:
                           callsigns=self.s.get("callsigns"), wing_names=self.wing_names())
 
     def check(self):
-        """Print problems with commands/bindings/vocabulary. Returns number of problems."""
+        """Print problems with commands/vocabulary. Returns number of problems."""
         problems = 0
         for cmd in self.commands:
             try:
-                self.executor.plan(cmd)
+                check_command(cmd)
             except CommandError as e:
                 problems += 1
                 print(f"  ! {cmd['name']}: {e}")
@@ -181,7 +177,7 @@ class DroidApp:
             print(f"[game] {event} {detail}" + (f" -> {response}" if response else ""))
 
     def answer_question(self, cmd, question):
-        state = read_state(self.bindings.players_dir)
+        state = read_state(self.players_dir)
         response, why = answer(question, state, self.last_hit, self.last_kill)
         self.reactions.command_answered()
         self.sounds.play(response)
@@ -195,10 +191,10 @@ class DroidApp:
     def start_game_link(self):
         gl = self.s.get("game_link") or {}
         gamelink.MANUAL_MOD_DIR = gl.get("mod_dir") or None
-        if not gl.get("enabled", True) or not (self.bindings.players_dir or gamelink.user_roots(None)):
+        if not gl.get("enabled", True) or not (self.players_dir or gamelink.user_roots(None)):
             self.emit("link", state="off", path=None)
             return
-        self.game_link = GameLink(self.bindings.players_dir, self.on_game_event, self.on_link_status)
+        self.game_link = GameLink(self.players_dir, self.on_game_event, self.on_link_status)
         self.game_link.start()
 
     def _worker(self):
@@ -213,22 +209,12 @@ class DroidApp:
                 continue
             try:
                 ex = self.executor
-                if is_squad_order(cmd) and self.squad_order_via_lua(cmd, group):
-                    pass                        # sent through the game's comm menu functions
+                if is_squad_order(cmd):         # pick the recipient in the game's comm menu
+                    self.squad_order(cmd, group)
                 else:
-                    if is_squad_order(cmd):     # pick the recipient in the comm menu with keys
-                        state = read_state(self.bindings.players_dir)
-                        try:
-                            extra = recipient_actions(group, state)
-                        except ValueError as e:
-                            raise CommandError(str(e))
-                        cmd = dict(cmd, actions=list(cmd.get("actions", [])) + extra)
                     ex.execute(cmd)
-                if ex.last_route == "game link":
-                    print(f"  via game link: {ex.last_note}")
-                elif ex.lua is not None and ex.last_note and self.verbose:
-                    print(f"  keys (game link not used: {ex.last_note})")
-                self.emit("command", name=cmd["name"], ok=True, route=ex.last_route)
+                print(f"  in game: {ex.last_note}")
+                self.emit("command", name=cmd["name"], ok=True, note=ex.last_note)
                 self.reactions.command_answered()
                 self.sounds.play(cmd.get("sound", "ack"))
             except CommandError as e:
@@ -238,22 +224,15 @@ class DroidApp:
                 self.emit("command", name=cmd["name"], ok=False, error=str(e))
                 self.say("error", f"  ! unexpected error: {e}")
 
-    def squad_order_via_lua(self, cmd, group):
-        """Send a wingman order through the game link. True if done; raises CommandError if the
-        game refused it (no such wing...); False to fall back to keys (no game link, no answer)."""
-        lua = self.executor.lua
-        if lua is None:
-            return False
+    def squad_order(self, cmd, group):
+        """A wingman order through the game link: the order's shortcut, then "All Fighters", or
+        "Wings" and the wing by name, in the comm menu. Raises CommandError with the reason."""
         shortcut = next(a["bind"] for a in cmd["actions"] if a.get("bind") in SQUAD_SHORTCUTS)
         wing = group[len(WING_PREFIX):] if group and group.startswith(WING_PREFIX) else None
-        ok, note = lua.send_order(shortcut, wing)
+        ok, note = self.executor.lua.send_order(shortcut, wing)
         self.executor.last_note = note
-        if ok:
-            self.executor.last_route = "game link"
-            return True
-        if lua.answered:                        # the game itself said no: keys wouldn't do better
+        if not ok:
             raise CommandError(note)
-        return False
 
     def _reload_settings(self):
         """Pick up a new droid name / wake words / PTT name requirement from settings.json."""
@@ -270,18 +249,11 @@ class DroidApp:
         except (OSError, ValueError, KeyError) as e:
             print(f"  ! could not reload settings: {e}")
             return False
-        keys = ("bindings_file", "fso_players_dir", "pilot", "follow_pilot")
-        if any(new.get(k) != self.s.get(k) for k in keys):      # game controls preset changed
-            for k in keys:
-                self.s[k] = new.get(k)
-            try:
-                b = self.bindings
-                fresh = type(b).from_settings(self.s)
-                b.configure(fresh.fixed_path, fresh.players_dir, fresh.pilot, fresh.follow_pilot)
-                print(f"Game controls: now using {b.preset_name}"
-                      + (f" (follows pilot {b.pilot})" if b.follow_pilot else "") + ".")
-            except (OSError, ValueError) as e:
-                print(f"  ! could not load the new preset: {e}")
+        if (new.get("game_link") or {}).get("mod_dir") != (self.s.get("game_link") or {}).get("mod_dir"):
+            self.s["game_link"] = new.get("game_link")              # mod folder chosen in the Events tab
+            gamelink.MANUAL_MOD_DIR = self.s["game_link"].get("mod_dir") or None
+            self.players_dir = gamelink.game_players_dir(self.s)
+            print(f"Game folder: {self.players_dir or 'not found'}")
         if new.get("events") != self.s.get("events"):            # event reactions edited
             self.s["events"] = new.get("events")
             self.reactions.config = event_config(self.s)
@@ -328,10 +300,8 @@ class DroidApp:
         return changed
 
     def emit_ready(self, modes, reloaded=False):
-        b = self.bindings
         self.emit("ready", name=self.name, modes=modes, reloaded=reloaded,
                   callsigns=list((self.s.get("callsigns") or {}).keys()),
-                  preset=b.preset_name, pilot=b.pilot if b.follow_pilot else None,
                   voice=self.sounds.voices.data.get("active"), commands=len(self.commands))
 
     # ------------------------------------------------------------------- loop

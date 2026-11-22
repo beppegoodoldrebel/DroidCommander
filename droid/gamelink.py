@@ -52,6 +52,41 @@ def event_config(settings):
 
 
 # ------------------------------------------------------------------ locations
+def detect_players_dir():
+    """FreeSpace Open's data/players folder on this PC (standard install or Knossos.NET), or ''."""
+    appdata = os.environ.get("APPDATA", "")
+    candidates = [os.path.join(appdata, "HardLightProductions", "FreeSpaceOpen", "data", "players")]
+    try:
+        with open(os.path.join(appdata, "KnossosNET", "settings.json"), encoding="utf-8-sig") as f:
+            base = json.load(f).get("base_path") or ""
+        if base:
+            candidates.insert(0, os.path.join(os.path.dirname(base), "HardLightProductions",
+                                              "FreeSpaceOpen", "data", "players"))
+    except (OSError, ValueError, AttributeError):
+        pass
+    return next((c for c in candidates if os.path.isdir(c)), "")
+
+
+def players_dir_for(mod_dir):
+    """The FSO user folder that goes with a Knossos portable mod folder (…/kn_portable/Library/…)."""
+    p = os.path.normpath(mod_dir or "")
+    for _ in range(6):
+        p = os.path.dirname(p)
+        cand = os.path.join(p, "HardLightProductions", "FreeSpaceOpen", "data", "players")
+        if os.path.isdir(cand):
+            return cand
+    return ""
+
+
+def game_players_dir(settings):
+    """Where FreeSpace Open keeps its user data, for this configuration: next to the chosen mod
+    folder, else the saved one, else found on this PC."""
+    gl = settings.get("game_link") or {}
+    return (players_dir_for(gl.get("mod_dir")) or
+            (settings.get("fso_players_dir") if os.path.isdir(settings.get("fso_players_dir") or "") else "")
+            or detect_players_dir())
+
+
 def kn_portable_root(players_dir):
     """…/kn_portable/HardLightProductions/FreeSpaceOpen/data/players -> …/kn_portable"""
     return os.path.normpath(os.path.join(players_dir, "..", "..", "..", ".."))

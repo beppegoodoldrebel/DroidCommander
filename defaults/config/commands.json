@@ -17,8 +17,8 @@
             "actions": [{"bind": "CUSTOM_CONTROL_5"}]
         },
         {
-            "name": "Toggle glide",
-            "phrases": ["toggle glide", "glide mode"],
+            "name": "Active pause",
+            "phrases": ["active pause", "pause the game", "toggle active pause"],
             "actions": [{"bind": "TOGGLE_GLIDING"}]
         },
         {
@@ -249,3 +249,4 @@
         }
     ]
 }
+

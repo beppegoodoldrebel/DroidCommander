@@ -3,9 +3,10 @@
   python -m droid app              open the Droid Commander app (configure + launch)
   python -m droid app --active     open it and start listening right away
   python -m droid                  start voice listening in the console
-  python -m droid check            validate commands, preset keys and vocabulary
-  python -m droid binds            show which key each command presses
-  python -m droid test "open s foils" [--delay 5]   run a command without voice
+  python -m droid check            validate commands and vocabulary
+  python -m droid binds            show which game control each command presses
+  python -m droid test "open s foils" [--delay 5]   run a command without voice (needs a mission
+                                   running with the game link)
   python -m droid learn            print the name of pressed keys/buttons (for push-to-talk)
   python -m droid sound ack        play a sound (ack/error/unknown/ready/chatter)
   python -m droid mics             list microphones
@@ -89,19 +90,19 @@ def main(argv=None):
         sys.exit(1 if n else 0)
 
     if args.cmd == "binds":
-        from .executor import CommandError
+        from .controls import Catalog
+        from .executor import CommandError, check_command
+        from . import gamelink
+        cat = Catalog(gamelink.mod_dir(app.players_dir, gamelink.MANUAL_MOD_DIR))
         for cmd in app.commands:
             try:
-                steps = app.executor.plan(cmd)
-                keys = [v.text if k == "key" else f"MOUSE {v}" for k, v, _ in steps if k != "wait"]
-                if not keys:                    # a question: no key to press
-                    print(f"  {cmd['name']:<28} (question)")
-                    continue
-                summary = keys[0] + (f" x{len(keys)}" if len(keys) > 1 and len(set(keys)) == 1
-                                     else "".join(" + " + k for k in keys[1:]))
-                print(f"  {cmd['name']:<28} {summary}")
+                check_command(cmd)
             except CommandError as e:
                 print(f"  {cmd['name']:<28} !! {e}")
+                continue
+            parts = [f"{a['bind']} ({cat.label(a['bind'])})" + (f" x{a['repeat']}" if a.get("repeat", 1) > 1 else "")
+                     for a in cmd["actions"] if "bind" in a]
+            print(f"  {cmd['name']:<28} {' + '.join(parts) or '(question)'}")
         return
 
     if args.cmd == "test":
@@ -114,8 +115,12 @@ def main(argv=None):
         print(f"'{rest}' -> {cmd['name']}. Switch to the game: running in {args.delay:.0f} s...")
         time.sleep(args.delay)
         try:
-            app.executor.execute(cmd)
-            print("Done.")
+            from .squad import is_squad_order
+            if is_squad_order(cmd):
+                app.squad_order(cmd, None)
+            else:
+                app.executor.execute(cmd)
+            print(f"Done: {app.executor.last_note}")
             app.sounds.play(cmd.get("sound", "ack"))
         except CommandError as e:
             print(f"Error: {e}")

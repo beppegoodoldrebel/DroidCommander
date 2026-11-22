@@ -1,12 +1,9 @@
-"""Press game controls through the game link instead of the keyboard.
+"""Talks to the game link script to press game controls inside FreeSpace Open.
 
-The Lua script inside FreeSpace Open (game_link/zz_droidcommander-sct.lua) reads
-droid_cmd.txt a few times per second and presses the named controls ("MAX_THROTTLE") with
-FSO's Lua button controls, exactly as if you pressed their key; it confirms in droid_ack.txt.
-
-Why: no keyboard layout problems, controls bound only to a joystick work too, and the game
-window doesn't need to be in front. When the game link isn't there, the game isn't running a
-mission or nothing answers in time, the executor falls back to pressing keys.
+The Lua script (game_link/zz_droidcommander-sct.lua) reads droid_cmd.txt a few times per
+second, presses the named controls ("MAX_THROTTLE") with FSO's Lua button controls exactly as
+if you pressed their key, and answers in droid_ack.txt. No keyboard layout, key binding or
+window focus is involved, and controls bound only to a joystick work too.
 """
 
 import os
@@ -18,22 +15,14 @@ CMD_FILE = "droid_cmd.txt"
 ACK_FILE = "droid_ack.txt"
 ACK_TIMEOUT = 0.6        # seconds: the script reads commands about 12 times per second
 ORDER_TIMEOUT = 1.5      # wingman orders wait for the comm menu to open and change page
-
-
-def can_run(command):
-    """Only commands made of game actions ("bind", optionally repeated) go through the game link.
-
-    Fixed keys, mouse buttons, pauses and held keys keep using the keyboard. Wingman orders
-    have their own path (send_order).
-    """
-    actions = command.get("actions", [])
-    return bool(actions) and all(set(a) <= {"bind", "repeat"} for a in actions)
+NOT_FLYING = "no mission running (or the game link isn't installed: Events tab)"
 
 
 class LuaControls:
     def __init__(self, players_dir_fn):
-        self.players_dir_fn = players_dir_fn       # bindings.players_dir may change (follow pilot)
+        self.players_dir_fn = players_dir_fn       # FSO's data/players folder (may be found later)
         self._last_seq = 0
+        self.answered = False
 
     def _mission_dir(self):
         """Folder the script reads from, if a mission is running right now."""
@@ -59,9 +48,13 @@ class LuaControls:
                 time.sleep(0.01)
 
     def send(self, command):
-        """(True, detail) if the game pressed the controls, else (False, reason)."""
-        body = ",".join(f"{a['bind']}:{max(1, int(a.get('repeat', 1)))}" for a in command["actions"])
-        return self._roundtrip(body, ACK_TIMEOUT)
+        """(True, what was pressed) if the game pressed the command's controls, else (False, reason)."""
+        from .executor import lua_body
+        return self._roundtrip(lua_body(command), ACK_TIMEOUT + self._waits(command))
+
+    @staticmethod
+    def _waits(command):
+        return sum(int(a.get("wait", 0)) for a in command.get("actions", [])) / 1000.0
 
     def send_order(self, shortcut, wing=None):
         """A wingman order: the shortcut, then "All Fighters" or the wing picked by name in the comm menu."""
@@ -86,7 +79,9 @@ class LuaControls:
         self.answered = False
         folder = self._mission_dir()
         if folder is None:
-            return False, "no mission running with the game link"
+            return False, NOT_FLYING
+        if gamelink.outdated_in_game(self.players_dir_fn()):
+            return False, "the game runs an older game link: restart FreeSpace Open"
         seq = max(int(time.time() * 1000), self._last_seq + 1)
         self._last_seq = seq
         cmd_path, ack_path = os.path.join(folder, CMD_FILE), os.path.join(folder, ACK_FILE)
@@ -105,8 +100,8 @@ class LuaControls:
             if len(parts) == 3 and parts[0] == str(seq):
                 self.answered = True
                 return parts[1] == "ok", parts[2]
-        try:                                       # too late: make sure it isn't run after the keys
+        try:                                       # too late: make sure it isn't run later
             self._write(cmd_path, "")
         except OSError:
             pass
-        return False, "the game didn't answer"
+        return False, "the game didn't answer (paused, or not in a mission?)"

@@ -22,11 +22,10 @@ class EventsTab(ttk.Frame):
         self.cfg = gamelink.event_config(s)
         self.link_enabled = tk.BooleanVar(value=(s.get("game_link") or {}).get("enabled", True))
         self.manual_mod = (s.get("game_link") or {}).get("mod_dir") or None
-        self.press_controls = tk.BooleanVar(value=(s.get("game_link") or {}).get("press_controls", True))
         gamelink.MANUAL_MOD_DIR = self.manual_mod
 
         # ---- game link
-        box = ttk.LabelFrame(self, text="Game link — lets the droid react to what happens in the game", padding=10)
+        box = ttk.LabelFrame(self, text="Game link — how your commands reach the game, and how the droid knows what happens", padding=10)
         box.pack(fill="x")
         row = ttk.Frame(box)
         row.pack(fill="x")
@@ -37,8 +36,6 @@ class EventsTab(ttk.Frame):
         self.install_btn.pack(side="right", padx=6)
         ttk.Checkbutton(row, text="React to game events", variable=self.link_enabled,
                         command=self.mark_dirty).pack(side="right", padx=16)
-        ttk.Checkbutton(row, text="Press controls through the game link", variable=self.press_controls,
-                        command=self.mark_dirty).pack(side="right")
         row = ttk.Frame(box)
         row.pack(fill="x", pady=(6, 0))
         ttk.Label(row, text="Mod folder:").pack(side="left")
@@ -107,11 +104,10 @@ class EventsTab(ttk.Frame):
         self.state_label.configure(text="● unsaved changes")
 
     def mod_dir(self):
-        return gamelink.mod_dir(self.ed.bindings.players_dir, self.manual_mod)
+        return gamelink.mod_dir(self.ed.players_dir, self.manual_mod)
 
     def link_settings(self):
-        return {"enabled": bool(self.link_enabled.get()), "mod_dir": self.manual_mod,
-                "press_controls": bool(self.press_controls.get())}
+        return {"enabled": bool(self.link_enabled.get()), "mod_dir": self.manual_mod}
 
     def save_mod_choice(self):
         with open(self.ed.settings_path, "r", encoding="utf-8-sig") as f:
@@ -119,6 +115,7 @@ class EventsTab(ttk.Frame):
         gl.update(self.link_settings())
         update_settings(self.ed.settings_path, {"game_link": gl})
         gamelink.MANUAL_MOD_DIR = self.manual_mod
+        self.ed.on_game_folder_changed()           # the game's controls come from this mod
         self.refresh_link()
 
     def choose_mod(self):
@@ -158,18 +155,18 @@ class EventsTab(ttk.Frame):
         text, color = {"installed": (f"✓  Installed in {name}", C["ok"]),
                        "outdated": (f"⚠  Installed in {name}, but outdated — install again", C["warn"]),
                        "missing": (f"○  Not installed in {name}", C["dim"])}[st]
-        if st == "installed" and gamelink.outdated_in_game(self.ed.bindings.players_dir):
+        if st == "installed" and gamelink.outdated_in_game(self.ed.players_dir):
             text, color = ("⚠  The game is still running the old game link — restart FreeSpace Open",
                            C["warn"])
         self.link_state.configure(text=text, fg=color)
         self.install_btn.configure(text="Update game link" if st == "outdated" else "Install game link")
         info = ("Adds one small script to the mod (data/tables/lua/" + gamelink.SCRIPT_NAME + "). "
-                "It reads game events for Droid Commander and, if “Press controls through the game "
-                "link” is on, presses your voice commands' game controls from inside the game (as if "
-                "you pressed their key; keys are used when the game link can't). ")
+                "It is how your voice commands reach the game: it presses their game controls from "
+                "inside the game, as if you pressed their key, and tells Droid Commander what happens "
+                "in the game. FreeSpace Open loads it when it starts. ")
         info += ("In multiplayer it runs in fair-play mode: the droid only knows what your HUD shows "
                  "(“enemies left” counts only ships on your radar). ")
-        ev = gamelink.find_event_file(self.ed.bindings.players_dir)
+        ev = gamelink.find_event_file(self.ed.players_dir)
         if ev:
             age = time.time() - os.path.getmtime(ev)
             when = "just now" if age < 60 else f"{int(age // 60)} min ago" if age < 3600 else \
