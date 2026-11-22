@@ -183,6 +183,32 @@ STATE_FILE = "droid_state.txt"
 STATE_MAX_AGE = 3.0      # seconds: an older snapshot means you're not flying right now
 
 
+def script_version():
+    """The game link version in the script shipped with this Droid Commander (DroidLink.version)."""
+    import re
+    try:
+        with open(SCRIPT_SRC, encoding="utf-8") as f:
+            m = re.search(r"^\s*version\s*=\s*(\d+)", f.read(), re.M)
+        return int(m.group(1)) if m else 0
+    except OSError:
+        return 0
+
+
+def running_version(players_dir):
+    """Version of the game link the game is running right now (0: older than versioning),
+    or None if no mission is running."""
+    state = read_state(players_dir)
+    if not state:
+        return None
+    return int(state.get("link", 0))
+
+
+def outdated_in_game(players_dir):
+    """True if the game is running an older game link than the installed one (restart FSO)."""
+    v = running_version(players_dir)
+    return v is not None and v < script_version()
+
+
 def read_state(players_dir):
     """Latest snapshot of your ship as a dict of numbers/strings, {} if dead, None if not flying."""
     events = find_event_file(players_dir)

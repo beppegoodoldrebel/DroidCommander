@@ -158,6 +158,9 @@ class EventsTab(ttk.Frame):
         text, color = {"installed": (f"✓  Installed in {name}", C["ok"]),
                        "outdated": (f"⚠  Installed in {name}, but outdated — install again", C["warn"]),
                        "missing": (f"○  Not installed in {name}", C["dim"])}[st]
+        if st == "installed" and gamelink.outdated_in_game(self.ed.bindings.players_dir):
+            text, color = ("⚠  The game is still running the old game link — restart FreeSpace Open",
+                           C["warn"])
         self.link_state.configure(text=text, fg=color)
         self.install_btn.configure(text="Update game link" if st == "outdated" else "Install game link")
         info = ("Adds one small script to the mod (data/tables/lua/" + gamelink.SCRIPT_NAME + "). "
@@ -192,7 +195,8 @@ class EventsTab(ttk.Frame):
             messagebox.showerror("Game link", f"Can't install the script:\n{e}", parent=self)
             return
         self.refresh_link()
-        self.ed.set_status("Game link installed. Restart FreeSpace Open if it is running, then start a mission.")
+        self.ed.set_status("Game link installed. If FreeSpace Open is running, close and restart it: "
+                           "it loads scripts only when it starts.")
 
     def remove(self):
         mod = self.mod_dir()

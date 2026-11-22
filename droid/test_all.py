@@ -122,6 +122,11 @@ class TestAllDialog(tk.Toplevel):
                 put(("done", "Stopped.")); return
             put(("status", f"Switch to the game… {n}"))
             time.sleep(1)
+        from . import gamelink
+        if gamelink.outdated_in_game(self.ed.bindings.players_dir):
+            put(("done", "⚠ The game is still running an older game link (it was updated while the game "
+                         "was open). Close and restart FreeSpace Open, then start a mission and try again."))
+            return
         if what == "check":
             self.do_check(put)
         else:

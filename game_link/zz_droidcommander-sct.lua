@@ -19,6 +19,9 @@
 -- Installed and removed by Droid Commander (Events tab). Safe to delete by hand.
 
 DroidLink = {
+	-- raise it whenever this script changes: Droid Commander warns when the game still runs an
+	-- older copy (FSO loads scripts only when it starts)
+	version = 8,
 	file = "droid_link.log",
 	state_file = "droid_state.txt",   -- snapshot of your ship, rewritten every second
 	next_state = 0,
@@ -466,7 +469,7 @@ end
 
 -- your ship's condition, answered by the droid when you ask "are you ok?", "are we clear?"...
 function DroidLink:writeState(ship, now)
-	local lines = {string.format("time=%.1f", now), "alive=1"}
+	local lines = {string.format("time=%.1f", now), "alive=1", "link=" .. self.version}
 	local function add(key, fn)
 		local ok, value = pcall(fn)
 		if ok and value ~= nil then lines[#lines + 1] = key .. "=" .. tostring(value) end
