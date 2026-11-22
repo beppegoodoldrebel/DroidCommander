@@ -6,7 +6,7 @@ import time
 import tkinter as tk
 from tkinter import messagebox, ttk
 
-from . import gamelink, theme
+from . import gamelink, hud, theme
 from .settings_io import update_settings
 from .voice_editor import MOOD_LABELS
 
@@ -43,6 +43,17 @@ class EventsTab(ttk.Frame):
         self.mod_label.pack(side="left", padx=8)
         ttk.Button(row, text="Automatic", command=self.auto_mod).pack(side="right")
         ttk.Button(row, text="Choose folder…", command=self.choose_mod).pack(side="right", padx=6)
+        row = ttk.Frame(box)
+        row.pack(fill="x", pady=(6, 0))
+        ttk.Label(row, text="Droid messages on the HUD:").pack(side="left")
+        level = (s.get("game_link") or {}).get("hud_messages", hud.DEFAULT_LEVEL)
+        self.hud_var = tk.StringVar(value=hud.LEVEL_LABELS.get(level, hud.LEVEL_LABELS[hud.DEFAULT_LEVEL]))
+        cb = ttk.Combobox(row, textvariable=self.hud_var, state="readonly", width=34,
+                          values=[hud.LEVEL_LABELS[l] for l in hud.LEVELS])
+        cb.pack(side="left", padx=8)
+        cb.bind("<<ComboboxSelected>>", lambda e: self.save_hud_level())
+        ttk.Label(row, style="Hint.TLabel", text=f"like a translation of the beeps: “{editor.droid_name}: "
+                  "Hull 72%, shields 45%”, “Toggle S-foils: done.” — only on your screen").pack(side="left", padx=6)
         self.link_info = ttk.Label(box, text="", style="Hint.TLabel", wraplength=1000, justify="left")
         self.link_info.pack(fill="x", anchor="w", pady=(6, 0))
         self.link_info.bind("<Configure>", lambda e: self.link_info.configure(wraplength=max(300, e.width - 10)))
@@ -106,8 +117,20 @@ class EventsTab(ttk.Frame):
     def mod_dir(self):
         return gamelink.mod_dir(self.ed.players_dir, self.manual_mod)
 
+    def hud_level(self):
+        return next((k for k, v in hud.LEVEL_LABELS.items() if v == self.hud_var.get()), hud.DEFAULT_LEVEL)
+
     def link_settings(self):
-        return {"enabled": bool(self.link_enabled.get()), "mod_dir": self.manual_mod}
+        return {"enabled": bool(self.link_enabled.get()), "mod_dir": self.manual_mod,
+                "hud_messages": self.hud_level()}
+
+    def save_hud_level(self):
+        """Saved right away: a running Droid Commander uses it at once."""
+        with open(self.ed.settings_path, "r", encoding="utf-8-sig") as f:
+            gl = dict(json.load(f).get("game_link") or {})
+        gl["hud_messages"] = self.hud_level()
+        update_settings(self.ed.settings_path, {"game_link": gl})
+        self.ed.set_status(f"Droid messages on the HUD: {self.hud_var.get()}.")
 
     def save_mod_choice(self):
         with open(self.ed.settings_path, "r", encoding="utf-8-sig") as f:

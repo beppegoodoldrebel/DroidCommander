@@ -10,6 +10,9 @@
 -- you pressed their key, and confirms in "droid_ack.txt". It presses nothing else and changes
 -- nothing else in the game.
 --
+-- Droid messages: "say:R2|Hull 72%, shields 45%" shows "R2: Hull 72%, shields 45%" among the
+-- HUD messages (only on your screen), like a translation of the droid's beeps.
+--
 -- Multiplayer: it runs in fair-play mode, so the droid only knows what your HUD shows:
 -- "enemies left" counts only the hostile ships your radar can see (no stealth ships,
 -- nothing out of sensor range).
@@ -21,7 +24,7 @@
 DroidLink = {
 	-- raise it whenever this script changes: Droid Commander warns when the game still runs an
 	-- older copy (FSO loads scripts only when it starts)
-	version = 9,
+	version = 10,
 	file = "droid_link.log",
 	state_file = "droid_state.txt",   -- snapshot of your ship, rewritten every second
 	next_state = 0,
@@ -32,8 +35,10 @@ DroidLink = {
 	next_check = 0,
 	enabled = true,
 	-- voice commands (game controls pressed for Droid Commander)
-	cmd_file = "droid_cmd.txt",       -- written by Droid Commander: "<seq>|ACTION:count,ACTION:count"
-	ack_file = "droid_ack.txt",       -- our answer: "<seq>|ok|..." or "<seq>|fail|reason"
+	cmd_file = "droid_cmd.txt",       -- written by Droid Commander: its last few commands, one per
+	                                  -- line, "<seq>|ACTION:count,ACTION:count" (new ones are run)
+	ack_file = "droid_ack.txt",       -- our answers, last few: "<seq>|ok|..." or "<seq>|fail|reason"
+	acks = {},
 	last_cmd = -1,                    -- last command seq handled (-1: not read yet)
 	queue = {},                       -- {num, name, count} controls still to press
 	pressed = false,                  -- a control is held this frame (released on the next)
@@ -48,13 +53,38 @@ function DroidLink:controlInfo()
 end
 
 function DroidLink:ack(seq, status, detail)
+	-- keep the last few answers: several commands can be read in the same pass
+	self.acks[#self.acks + 1] = string.format("%s|%s|%s", tostring(seq), status, ((detail or ""):gsub("\n", " ")))
+	while #self.acks > 8 do table.remove(self.acks, 1) end
 	pcall(function()
 		local f = cf.openFile(self.ack_file, "w", self.path)
 		if f ~= nil and f:isValid() then
-			f:write(string.format("%s|%s|%s\n", tostring(seq), status, detail or ""))
+			f:write(table.concat(self.acks, "\n") .. "\n")
 			f:close()
 		end
 	end)
+end
+
+-- "R2: <text>" among the HUD messages. Only on this player's screen: the message is queued
+-- locally (in multiplayer as a plain HUD line). Low priority: it never cuts the wingmen's radio.
+function DroidLink:say(seq, sender, text)
+	text = text:sub(1, 200)
+	sender = sender:sub(1, 24)
+	local ok = false
+	if not ba.MultiplayerMode then
+		ok = pcall(function()
+			local msg = mn.addMessage("DroidCommander_" .. tostring(seq), text)
+			if MESSAGE_PRIORITY_LOW ~= nil then
+				mn.sendMessage(sender, msg, 0, MESSAGE_PRIORITY_LOW)
+			else
+				mn.sendMessage(sender, msg)
+			end
+		end)
+	end
+	if not ok then
+		ok = pcall(function() mn.sendPlainMessage(sender .. ": " .. text) end)
+	end
+	self:ack(seq, ok and "ok" or "fail", ok and "shown" or "can't show messages")
 end
 
 -- Controls missing from the name table FSO gives Lua (control_info.cpp plr_commands), with
@@ -218,6 +248,11 @@ function DroidLink:orderTick()
 end
 
 function DroidLink:runCommand(seq, body)
+	local sender, text = body:match("^say:([^|]*)|(.*)$")
+	if sender ~= nil then
+		self:say(seq, sender, text)
+		return
+	end
 	if self:controlInfo() == nil then
 		self:ack(seq, "fail", "no Lua control info in this FSO build")
 		return

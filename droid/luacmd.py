@@ -7,9 +7,12 @@ window focus is involved, and controls bound only to a joystick work too.
 """
 
 import os
+import threading
 import time
 
 from . import gamelink
+
+KEEP_LINES = 8           # the command file holds the last few commands (the script runs the new ones)
 
 CMD_FILE = "droid_cmd.txt"
 ACK_FILE = "droid_ack.txt"
@@ -22,6 +25,8 @@ class LuaControls:
     def __init__(self, players_dir_fn):
         self.players_dir_fn = players_dir_fn       # FSO's data/players folder (may be found later)
         self._last_seq = 0
+        self._lines = []                           # [(seq, line)] still in the command file
+        self._lock = threading.Lock()              # commands and droid messages come from 2 threads
         self.answered = False
 
     def _mission_dir(self):
@@ -74,6 +79,37 @@ class LuaControls:
         split = lambda s: {n for n in s.split(",") if n}
         return split(parts.get("known", "")), split(parts.get("unknown", ""))
 
+    def say(self, sender, text):
+        """Show "<sender>: <text>" among the game's HUD messages. Doesn't wait; False if not flying."""
+        text = " ".join(str(text).split())[:200]
+        sender = " ".join(str(sender).replace("|", "/").split())[:24] or "R2"
+        folder = self._mission_dir()
+        if folder is None or not text:
+            return False
+        try:
+            self._post(folder, f"say:{sender}|{text}")
+        except OSError:
+            return False
+        return True
+
+    def _post(self, folder, body):
+        """Add a command to the command file (keeping the last few). Returns its seq."""
+        with self._lock:
+            seq = max(int(time.time() * 1000), self._last_seq + 1)
+            self._last_seq = seq
+            self._lines = (self._lines + [(seq, f"{seq}|{body}")])[-KEEP_LINES:]
+            self._write(os.path.join(folder, CMD_FILE), "\n".join(l for _, l in self._lines) + "\n")
+            return seq
+
+    def _forget(self, folder, seq):
+        """Take a command out of the file (it came too late: it must not run any more)."""
+        with self._lock:
+            self._lines = [(s, l) for s, l in self._lines if s != seq]
+            try:
+                self._write(os.path.join(folder, CMD_FILE), "".join(l + "\n" for _, l in self._lines))
+            except OSError:
+                pass
+
     def _roundtrip(self, body, timeout):
         """Write a command, wait for the game's answer. self.answered: the game did answer."""
         self.answered = False
@@ -82,26 +118,23 @@ class LuaControls:
             return False, NOT_FLYING
         if gamelink.outdated_in_game(self.players_dir_fn()):
             return False, "the game runs an older game link: restart FreeSpace Open"
-        seq = max(int(time.time() * 1000), self._last_seq + 1)
-        self._last_seq = seq
-        cmd_path, ack_path = os.path.join(folder, CMD_FILE), os.path.join(folder, ACK_FILE)
         try:
-            self._write(cmd_path, f"{seq}|{body}\n")
+            seq = self._post(folder, body)
         except OSError as e:
             return False, f"can't write {CMD_FILE}: {e}"
+        ack_path = os.path.join(folder, ACK_FILE)
         end = time.time() + timeout
         while time.time() < end:
             time.sleep(0.02)
             try:
                 with open(ack_path, encoding="utf-8", errors="replace") as f:
-                    parts = f.readline().strip().split("|", 2)
+                    lines = f.read().splitlines()
             except OSError:
                 continue
-            if len(parts) == 3 and parts[0] == str(seq):
-                self.answered = True
-                return parts[1] == "ok", parts[2]
-        try:                                       # too late: make sure it isn't run later
-            self._write(cmd_path, "")
-        except OSError:
-            pass
+            for line in lines:
+                parts = line.strip().split("|", 2)
+                if len(parts) == 3 and parts[0] == str(seq):
+                    self.answered = True
+                    return parts[1] == "ok", parts[2]
+        self._forget(folder, seq)
         return False, "the game didn't answer (paused, or not in a mission?)"

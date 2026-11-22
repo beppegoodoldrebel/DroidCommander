@@ -137,7 +137,15 @@ squealing when your hull is hit, alarm when the hull is low, and so on.
     script doesn't answer within 0.6 s, the droid gives the error sound with the reason.
     Commands left in the file from before a mission starts are never run. The script reports
     its version in `droid_state.txt`, so the app warns when the game still runs an older copy
-    (FSO loads scripts only at startup).
+    (FSO loads scripts only at startup). The command file keeps the last 8 commands and the
+    answer file the last 8 answers, so commands sent in a quick row are never lost.
+  - **Droid messages on the HUD** (`droid/hud.py`, Events tab): like a translation of the beeps,
+    the droid writes lines such as "R2: Hull 72%, shields 45%" among the game's HUD messages
+    (`say:R2|text` → `mn.addMessage` + `mn.sendMessage("R2", msg, 0, MESSAGE_PRIORITY_LOW)`, so it
+    never cuts the wingmen's radio; in multiplayer `mn.sendPlainMessage`, only on your screen).
+    Levels: *Off*; *Answers and problems* (answers to questions, why a command failed); *Also
+    every command* (default: "Toggle S-foils: done.", "Cover me -> Alpha", what it heard when it
+    didn't understand); *Also game events* (hull low, subsystem lost, kills, when the droid reacts).
     **Commands → ▶ Test all in game…** (droid/test_all.py) tries every command at once during
     a mission: *Check names* sends `check:NAME,…` and the script answers which controls the
     game knows (nothing pressed); *Press all* presses each command one every 2 s (wingman

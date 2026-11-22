@@ -55,6 +55,10 @@ Start every command with the droid's name, then the order:
 | "Wingmen, attack my target" | order to **all** your wingmen |
 | "Squad Alpha, cover me" | order to **Alpha wing** only |
 
+**The droid writes, too:** its answers appear among the game's HUD messages, like a translation
+of its beeps — "R2: Hull 72%, shields 45%", "R2: Toggle S-foils: done.", or what it heard when it
+didn't understand you. Choose how much it says in the Events tab (*Droid messages on the HUD*).
+
 The full list of commands is in the **Commands** tab: every one can be changed, disabled,
 or created from scratch (**Import from game…** adds commands for any game control).
 
