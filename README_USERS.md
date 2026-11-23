@@ -21,7 +21,7 @@ folder and in the Start menu (*Droid Commander User Manual*).
 
 ## Install
 
-1. Run **DroidCommander-Setup-1.0.0.exe** and follow the steps. No administrator rights needed.
+1. Run **DroidCommander-Setup-1.1.0.exe** and follow the steps. No administrator rights needed.
 2. Start **Droid Commander** from the Start menu (or the desktop icon).
 
 Everything is included: the speech model, the droid voices and the game link script.
