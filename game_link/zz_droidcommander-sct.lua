@@ -26,7 +26,7 @@
 DroidLink = {
 	-- raise it whenever this script changes: Droid Commander warns when the game still runs an
 	-- older copy (FSO loads scripts only when it starts)
-	version = 12,
+	version = 13,
 	display = {},                     -- droid display lines: {sender, text, born, until}
 	display_cfg = {pos = "top_center", size = "medium", secs = 6},
 	file = "droid_link.log",
@@ -254,7 +254,7 @@ end
 -- ------------------------------------------------------------------ droid display
 -- positions as fractions of the screen: x, y of the first line, width of the text box
 local DISPLAY_POS = {
-	top_center  = {0.28,  0.035, 0.44, true},   -- centred at the top (true: centre each line)
+	top_center  = {0.28,  0.085, 0.44, true},   -- centred at the top, under FotG's Diagnostics gauge (true: centre each line)
 	left        = {0.008, 0.42, 0.20},   -- under the mission lists on the left
 	bottom_left = {0.008, 0.64, 0.20},
 	bottom      = {0.36,  0.64, 0.28},
